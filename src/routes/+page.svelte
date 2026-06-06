@@ -18,6 +18,8 @@
 	let allLessons = $state<Lesson[]>([]);
 	let recentLessons = $state<Lesson[]>([]);
 	let unfinishedLesson = $state<LessonPayload | null>(null);
+	let canStartNew = $state(true);
+	let blockReason = $state<string | null>(null);
 	let totalLessons = $state(0);
 	let loading = $state(true);
 	let starting = $state(false);
@@ -50,6 +52,8 @@
 			if (lessonRes.ok) {
 				const lessonData = await lessonRes.json();
 				const latest = lessonData.lesson as LessonPayload | null;
+				canStartNew = lessonData.canStartNew !== false;
+				blockReason = (lessonData.blockReason as string | null) ?? null;
 				if (latest && latest.enjoyment === null) {
 					unfinishedLesson = latest;
 				}
@@ -121,13 +125,24 @@
 						</div>
 					{/if}
 
-					<button type="button" class="start-btn" disabled={starting} onclick={startLesson}>
+					<button
+						type="button"
+						class="start-btn"
+						disabled={starting || !canStartNew}
+						onclick={startLesson}
+					>
 						{#if starting}
 							טוען...
+						{:else if !canStartNew && blockReason}
+							{blockReason}
 						{:else}
 							התחל שיעור
 						{/if}
 					</button>
+
+					{#if blockReason && !canStartNew && !unfinishedLesson}
+						<p class="limit-hint">{blockReason}</p>
+					{/if}
 
 					{#if errorMsg}
 						<p class="error">{errorMsg}</p>
@@ -432,6 +447,13 @@
 		margin: 0;
 		font-size: 0.9rem;
 		color: var(--text-muted);
+	}
+
+	.limit-hint {
+		text-align: center;
+		color: #6b5b4f;
+		font-size: 0.85rem;
+		margin: 0;
 	}
 
 	.error {

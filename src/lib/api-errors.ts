@@ -34,7 +34,13 @@ function mapMessage(message: string): string {
 		return 'שגיאה בשמירת השיעור — בדוק הרשאות Supabase';
 	}
 	if (message.includes('quota') || message.includes('Quota')) {
-		return 'מכסת Gemini מלאה — נסה שוב מאוחר יותר או החלף מפתח API';
+		return 'הגענו למכסה היומית, נסה מחר';
+	}
+	if (message.includes('הגעת למכסה היומית')) {
+		return message;
+	}
+	if (message.includes('סיים את השיעור הנוכחי')) {
+		return message;
 	}
 	return message;
 }

@@ -3,9 +3,9 @@ import { GEMINI_API_KEY } from '$env/static/private';
 import { buildLessonPrompt, parseLessonResponse } from '$lib/prompts/lesson';
 import type { UserPreferences } from '$lib/types/lesson';
 
-const MODEL = 'gemini-2.5-flash';
+const MODEL = 'gemini-2.5-flash-lite';
 
-export async function generateLesson(prefs: UserPreferences) {
+export async function generateWithGemini(prefs: UserPreferences) {
 	const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 	const model = genAI.getGenerativeModel({ model: MODEL });
 	const prompt = buildLessonPrompt(prefs);

@@ -1,5 +1,17 @@
-import type { UserPreferences } from '$lib/types/lesson';
-import { getTopicLabel } from '$lib/topics';
+/**
+ * Dev-only: compare lesson output across Gemini Flash, Flash-Lite, and Groq.
+ * Usage: node --env-file=.env scripts/test-lesson-providers.mjs
+ */
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+const SAMPLE_PREFS = {
+	learnedTopics: [],
+	learnedSummaries: [],
+	likedDomains: [],
+	dislikedDomains: [],
+	age: null,
+	preferredTopic: 'science'
+};
 
 const BASE_PROMPT = `אתה מורה יוצא דופן שמסביר רעיונות בצורה חדה, מדויקת וזכירה; המטרה שלך היא שאבין לעומק משהו חדש כך שאזכור אותו גם שבוע אחרי; בחר נושא לא טrivialי מתחום כלשהו וצור יחידת לימוד לפי רצף קבוע של 8 קטעים.
 
@@ -22,75 +34,15 @@ const BASE_PROMPT = `אתה מורה יוצא דופן שמסביר רעיונו
 
 כללים: אל תהיה גנרי או משעמם, אל תכתוב כמו ספר לימוד, אל תשתמש באנלוגיות או מטאפורות בכלל, היה תמציתי אבל עם עומק אמיתי, ובחר נושא מעניין ולא שחוק. כל הפלט חייב להיות בעברית (מלבד IMAGE_QUERY ו-YOUTUBE_QUERY שחייבים להיות באנגלית).`;
 
-function buildAgePrompt(age: number): string {
-	let depth = 'עומק מלא כרגיל';
-	if (age <= 12) {
-		depth = 'משפטים קצרים, מושגים בסיסיים';
-	} else if (age <= 17) {
-		depth = 'ברור אך לא מתקדם מדי';
-	}
-
-	return `\nהלומד בן/בת ${age}. התאם את רמת השפה והעומק:\n- גילאי 8–12: משפטים קצרים, מושגים בסיסיים\n- 13–17: ברור אך לא מתקדם מדי\n- 18+: עומק מלא כרגיל\nבחר את הרמה המתאימה: ${depth}.`;
-}
-
-export function buildLessonPrompt(prefs: UserPreferences): string {
+function buildPrompt(prefs) {
 	const parts = [BASE_PROMPT];
-
-	if (prefs.age !== null) {
-		parts.push(buildAgePrompt(prefs.age));
-	}
-
 	if (prefs.preferredTopic !== 'random') {
-		const label = getTopicLabel(prefs.preferredTopic);
-		parts.push(
-			`\nבחר נושא חדש מתחום "${label}" בלבד. שורת DOMAIN חייבת להיות "${label}".`
-		);
+		parts.push(`\nבחר נושא חדש מתחום "מדע" בלבד. שורת DOMAIN חייבת להיות "מדע".`);
 	}
-
-	if (prefs.learnedTopics.length > 0) {
-		parts.push(
-			`\nהנושאים שלמדתי בעבר (אל תחזור עליהם ואל תבחר נושאים דומים):\n${prefs.learnedTopics.join(', ')}`
-		);
-	}
-
-	if (prefs.learnedSummaries.length > 0) {
-		parts.push(
-			`\nסיכומי נושאים שכבר למדתי (הימנע מחזרה):\n${prefs.learnedSummaries.join('\n')}`
-		);
-	}
-
-	if (prefs.likedDomains.length > 0) {
-		parts.push(`\nתחומים שאהבתי: ${prefs.likedDomains.join(', ')}`);
-		parts.push('בחר נושא חדש מתחום שאהבתי או דומה לו.');
-	}
-
-	if (prefs.dislikedDomains.length > 0) {
-		parts.push(`\nתחומים שלא אהבתי (הימנע מהם): ${prefs.dislikedDomains.join(', ')}`);
-	}
-
 	return parts.join('\n');
 }
 
-export interface ParsedLesson {
-	topicTitle: string;
-	domain: string;
-	imageQuery: string;
-	youtubeQuery: string;
-	segments: string[];
-}
-
-export const SEGMENT_ACCENTS = [
-	'var(--mint)',
-	'var(--lavender)',
-	'var(--yellow)',
-	'var(--pink)',
-	'var(--mint)',
-	'var(--lavender)',
-	'var(--yellow)',
-	'var(--pink)'
-] as const;
-
-export function parseLessonResponse(raw: string): ParsedLesson {
+function parseLessonResponse(raw) {
 	let text = raw.trim();
 	let topicTitle = 'נושא חדש';
 	let domain = 'כללי';
@@ -102,19 +54,16 @@ export function parseLessonResponse(raw: string): ParsedLesson {
 		topicTitle = topicMatch[1].trim();
 		text = text.replace(/^TOPIC:\s*.+\n?/m, '');
 	}
-
 	const domainMatch = text.match(/^DOMAIN:\s*(.+)$/m);
 	if (domainMatch) {
 		domain = domainMatch[1].trim();
 		text = text.replace(/^DOMAIN:\s*.+\n?/m, '');
 	}
-
 	const imageMatch = text.match(/^IMAGE_QUERY:\s*(.+)$/m);
 	if (imageMatch) {
 		imageQuery = imageMatch[1].trim();
 		text = text.replace(/^IMAGE_QUERY:\s*.+\n?/m, '');
 	}
-
 	const youtubeMatch = text.match(/^YOUTUBE_QUERY:\s*(.+)$/m);
 	if (youtubeMatch) {
 		youtubeQuery = youtubeMatch[1].trim();
@@ -133,13 +82,82 @@ export function parseLessonResponse(raw: string): ParsedLesson {
 	return { topicTitle, domain, imageQuery, youtubeQuery, segments };
 }
 
-export const SEGMENT_LABELS = [
-	'סקרנות',
-	'למה זה חשוב',
-	'ההסבר',
-	'עומק',
-	'דוגמה מהחיים',
-	'שלוש נקודות מפתח',
-	'שאלה לחשיבה',
-	'למידה נוספת'
-] as const;
+async function testGemini(model) {
+	const key = process.env.GEMINI_API_KEY;
+	if (!key) throw new Error('GEMINI_API_KEY missing');
+	const genAI = new GoogleGenerativeAI(key);
+	const m = genAI.getGenerativeModel({ model });
+	const result = await m.generateContent(buildPrompt(SAMPLE_PREFS));
+	return result.response.text();
+}
+
+async function testGroq() {
+	const key = process.env.GROQ_API_KEY;
+	if (!key) throw new Error('GROQ_API_KEY missing');
+	const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+		method: 'POST',
+		headers: {
+			Authorization: `Bearer ${key}`,
+			'Content-Type': 'application/json'
+		},
+		body: JSON.stringify({
+			model: 'llama-3.3-70b-versatile',
+			messages: [{ role: 'user', content: buildPrompt(SAMPLE_PREFS) }],
+			temperature: 0.8
+		})
+	});
+	if (!res.ok) {
+		const err = await res.text();
+		throw new Error(`Groq ${res.status}: ${err}`);
+	}
+	const data = await res.json();
+	return data.choices[0].message.content;
+}
+
+async function runTest(name, fn) {
+	console.log(`\n=== ${name} ===`);
+	try {
+		const raw = await fn();
+		const parsed = parseLessonResponse(raw);
+		console.log('PASS — parseLessonResponse succeeded');
+		console.log(`  TOPIC: ${parsed.topicTitle}`);
+		console.log(`  DOMAIN: ${parsed.domain}`);
+		console.log(`  Segments: ${parsed.segments.length}`);
+		console.log(`  First segment: ${parsed.segments[0].slice(0, 80)}...`);
+		return true;
+	} catch (e) {
+		console.log(`FAIL — ${e.message}`);
+		return false;
+	}
+}
+
+const prompt = buildPrompt(SAMPLE_PREFS);
+console.log(`Prompt length: ${prompt.length} chars`);
+
+const results = {};
+
+results['gemini-2.5-flash'] = await runTest('Gemini 2.5 Flash', () =>
+	testGemini('gemini-2.5-flash')
+);
+results['gemini-2.5-flash-lite'] = await runTest('Gemini 2.5 Flash-Lite', () =>
+	testGemini('gemini-2.5-flash-lite')
+);
+
+if (process.env.GROQ_API_KEY) {
+	results['groq-llama-3.3'] = await runTest('Groq Llama 3.3 70B', testGroq);
+} else {
+	console.log('\n=== Groq Llama 3.3 70B ===');
+	console.log('SKIP — GROQ_API_KEY not set');
+	results['groq-llama-3.3'] = null;
+}
+
+console.log('\n=== Summary ===');
+for (const [k, v] of Object.entries(results)) {
+	console.log(`  ${k}: ${v === null ? 'skipped' : v ? 'PASS' : 'FAIL'}`);
+}
+
+const groqOk = results['groq-llama-3.3'];
+if (groqOk === false) {
+	console.log('\nGroq failed Hebrew/parse test — fallback will be disabled in production.');
+	process.exit(1);
+}
