@@ -31,7 +31,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.45rem;
-		justify-content: flex-end;
+		justify-content: start;
 	}
 
 	.topic-chip {
@@ -47,8 +47,9 @@
 		transition: all 0.15s;
 	}
 
-	.topic-chip:hover:not(:disabled) {
-		border-color: var(--mint);
+	.topic-chip:hover:not(:disabled):not(.selected) {
+		border-color: var(--lavender);
+		background: color-mix(in srgb, var(--lavender) 35%, var(--bg));
 	}
 
 	.topic-chip.selected {

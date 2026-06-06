@@ -259,7 +259,7 @@
 	.corner-star {
 		position: absolute;
 		top: 1rem;
-		left: 1rem;
+		inset-inline-start: 1rem;
 		width: 1.25rem;
 		height: 1.25rem;
 		opacity: 0.7;

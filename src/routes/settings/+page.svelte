@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { isUnauthorized, parseApiError } from '$lib/api-errors';
 	import AppHeader from '$lib/components/AppHeader.svelte';
+	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
+	import AccentCard from '$lib/components/AccentCard.svelte';
 
 	let age = $state('');
 	let newUsername = $state('');
@@ -159,142 +161,181 @@
 </script>
 
 <main class="settings-page">
-	<AppHeader variant="sub" title="הגדרות" wide />
+	<div class="settings-shell">
+		<DecorativeBg />
 
-	{#if loading}
-		<p class="status">טוען...</p>
-	{:else}
-		{#if setupRequired}
-			<div class="setup-banner">
-				<p>
-					<strong>נדרשת הגדרת מסד נתונים</strong> — הרץ את
-					<code>supabase/add_profiles.sql</code> בעורך SQL של Supabase כדי לשמור גיל.
-				</p>
-			</div>
-		{/if}
+		<div class="settings-content">
+			<AppHeader variant="sub" title="הגדרות" wide />
 
-		<div class="settings-grid">
-			<section class="settings-card">
-				<h2>גיל</h2>
-				<form onsubmit={saveAge}>
-					<label for="age">גיל (להתאמת עומק השיעור)</label>
-					<input
-						id="age"
-						type="number"
-						bind:value={age}
-						required
-						min="8"
-						max="120"
-						inputmode="numeric"
-						disabled={savingAge}
-					/>
-					<button type="submit" disabled={savingAge}>
-						{savingAge ? 'שומר...' : 'שמור גיל'}
-					</button>
-				</form>
-			</section>
+			{#if loading}
+				<p class="status">טוען...</p>
+			{:else}
+				{#if setupRequired}
+					<div class="setup-banner">
+						<p>
+							<strong>נדרשת הגדרת מסד נתונים</strong> — הרץ את
+							<code>supabase/add_profiles.sql</code> בעורך SQL של Supabase כדי לשמור גיל.
+						</p>
+					</div>
+				{/if}
 
-			<div class="account-col">
-				<section class="settings-card">
-					<h2>שם משתמש</h2>
-					<form onsubmit={saveUsername}>
-						<label for="new-username">שם משתמש חדש</label>
-						<input
-							id="new-username"
-							type="text"
-							bind:value={newUsername}
-							required
-							minlength="2"
-							maxlength="32"
-							autocomplete="username"
-							disabled={savingUsername}
-						/>
-						<label for="username-password">סיסמה לאימות</label>
-						<input
-							id="username-password"
-							type="password"
-							bind:value={usernamePassword}
-							required
-							autocomplete="current-password"
-							disabled={savingUsername}
-						/>
-						<button type="submit" disabled={savingUsername}>
-							{savingUsername ? 'מעדכן...' : 'עדכן שם משתמש'}
+				<div class="settings-grid">
+					<AccentCard title="גיל" accent="mint">
+						{#snippet titleIcon()}
+							<svg viewBox="0 0 24 24" fill="none">
+								<circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" />
+								<path d="M6 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="2" />
+							</svg>
+						{/snippet}
+						<p class="helper">משפיע על עומק ושפת השיעורים — מותאם לגיל שלך.</p>
+						<form onsubmit={saveAge}>
+							<label for="age">גיל (8–120)</label>
+							<input
+								id="age"
+								type="number"
+								bind:value={age}
+								required
+								min="8"
+								max="120"
+								inputmode="numeric"
+								disabled={savingAge}
+							/>
+							<button type="submit" disabled={savingAge}>
+								{savingAge ? 'שומר...' : 'שמור גיל'}
+							</button>
+						</form>
+					</AccentCard>
+
+					<div class="account-col">
+						<AccentCard title="שם משתמש" accent="lavender">
+							{#snippet titleIcon()}
+								<svg viewBox="0 0 24 24" fill="none">
+									<circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" />
+									<path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="2" />
+								</svg>
+							{/snippet}
+							<form onsubmit={saveUsername}>
+								<label for="new-username">שם משתמש חדש</label>
+								<input
+									id="new-username"
+									type="text"
+									bind:value={newUsername}
+									required
+									minlength="2"
+									maxlength="32"
+									autocomplete="username"
+									disabled={savingUsername}
+								/>
+								<label for="username-password">סיסמה לאימות</label>
+								<input
+									id="username-password"
+									type="password"
+									bind:value={usernamePassword}
+									required
+									autocomplete="current-password"
+									disabled={savingUsername}
+								/>
+								<button type="submit" disabled={savingUsername}>
+									{savingUsername ? 'מעדכן...' : 'עדכן שם משתמש'}
+								</button>
+							</form>
+						</AccentCard>
+
+						<AccentCard title="סיסמה" accent="yellow">
+							{#snippet titleIcon()}
+								<svg viewBox="0 0 24 24" fill="none">
+									<rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2" />
+									<path d="M8 11V8a4 4 0 118 0v3" stroke="currentColor" stroke-width="2" />
+								</svg>
+							{/snippet}
+							<form onsubmit={savePassword}>
+								<label for="current-password">סיסמה נוכחית</label>
+								<input
+									id="current-password"
+									type="password"
+									bind:value={currentPassword}
+									required
+									autocomplete="current-password"
+									disabled={savingPassword}
+								/>
+								<label for="new-password">סיסמה חדשה</label>
+								<input
+									id="new-password"
+									type="password"
+									bind:value={newPassword}
+									required
+									minlength="6"
+									maxlength="72"
+									autocomplete="new-password"
+									disabled={savingPassword}
+								/>
+								<label for="confirm-password">אימות סיסמה חדשה</label>
+								<input
+									id="confirm-password"
+									type="password"
+									bind:value={confirmPassword}
+									required
+									minlength="6"
+									maxlength="72"
+									autocomplete="new-password"
+									disabled={savingPassword}
+								/>
+								<button type="submit" disabled={savingPassword}>
+									{savingPassword ? 'מעדכן...' : 'עדכן סיסמה'}
+								</button>
+							</form>
+						</AccentCard>
+					</div>
+				</div>
+
+				<div class="logout-card">
+					<AccentCard accent="pink">
+						<button type="button" class="logout-btn" disabled={loggingOut} onclick={logout}>
+							{loggingOut ? 'מתנתק...' : 'התנתק'}
 						</button>
-					</form>
-				</section>
+					</AccentCard>
+				</div>
 
-				<section class="settings-card">
-					<h2>סיסמה</h2>
-					<form onsubmit={savePassword}>
-						<label for="current-password">סיסמה נוכחית</label>
-						<input
-							id="current-password"
-							type="password"
-							bind:value={currentPassword}
-							required
-							autocomplete="current-password"
-							disabled={savingPassword}
-						/>
-						<label for="new-password">סיסמה חדשה</label>
-						<input
-							id="new-password"
-							type="password"
-							bind:value={newPassword}
-							required
-							minlength="6"
-							maxlength="72"
-							autocomplete="new-password"
-							disabled={savingPassword}
-						/>
-						<label for="confirm-password">אימות סיסמה חדשה</label>
-						<input
-							id="confirm-password"
-							type="password"
-							bind:value={confirmPassword}
-							required
-							minlength="6"
-							maxlength="72"
-							autocomplete="new-password"
-							disabled={savingPassword}
-						/>
-						<button type="submit" disabled={savingPassword}>
-							{savingPassword ? 'מעדכן...' : 'עדכן סיסמה'}
-						</button>
-					</form>
-				</section>
-			</div>
+				{#if errorMsg}
+					<p class="error">{errorMsg}</p>
+				{/if}
+				{#if successMsg}
+					<p class="success">{successMsg}</p>
+				{/if}
+			{/if}
 		</div>
-
-		<button type="button" class="logout-btn" disabled={loggingOut} onclick={logout}>
-			{loggingOut ? 'מתנתק...' : 'התנתק'}
-		</button>
-
-		{#if errorMsg}
-			<p class="error">{errorMsg}</p>
-		{/if}
-		{#if successMsg}
-			<p class="success">{successMsg}</p>
-		{/if}
-	{/if}
+	</div>
 </main>
 
 <style>
 	.settings-page {
 		min-height: 100dvh;
 		padding: 0 1.25rem 2.5rem;
+	}
+
+	.settings-shell {
+		position: relative;
 		max-width: 1400px;
 		margin: 0 auto;
+		min-height: calc(100dvh - 2rem);
+	}
+
+	.settings-content {
+		position: relative;
+		z-index: 1;
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
 	}
 
 	.setup-banner {
 		background: var(--yellow);
 		border-radius: var(--radius-lg);
 		padding: 1rem 1.25rem;
-		margin-bottom: 1rem;
 		font-size: 0.9rem;
 		line-height: 1.5;
 		text-align: right;
+		box-shadow: 0 4px 16px var(--shadow);
 	}
 
 	.setup-banner p {
@@ -321,19 +362,11 @@
 		gap: 1rem;
 	}
 
-	.settings-card {
-		background: var(--surface);
-		border-radius: var(--radius-xl);
-		padding: 1.25rem 1.5rem;
-		box-shadow: 0 8px 32px var(--shadow-lg);
-		text-align: right;
-	}
-
-	.settings-card h2 {
-		margin: 0 0 0.85rem;
-		font-size: 1rem;
-		font-weight: 700;
-		color: var(--text-primary);
+	.helper {
+		margin: -0.35rem 0 0.85rem;
+		font-size: 0.85rem;
+		line-height: 1.5;
+		color: var(--text-muted);
 	}
 
 	form {
@@ -362,6 +395,11 @@
 		outline: 2px solid var(--mint);
 	}
 
+	input[type='number'] {
+		direction: ltr;
+		text-align: right;
+	}
+
 	button[type='submit'] {
 		margin-top: 0.35rem;
 		padding: 0.85rem;
@@ -373,6 +411,12 @@
 		font-weight: 700;
 		cursor: pointer;
 		font-family: inherit;
+		box-shadow: 0 4px 16px var(--shadow);
+		transition: transform 0.15s;
+	}
+
+	button[type='submit']:hover:not(:disabled) {
+		transform: translateY(-1px);
 	}
 
 	button[type='submit']:disabled {
@@ -380,19 +424,23 @@
 		cursor: not-allowed;
 	}
 
+	.logout-card :global(.accent-card) {
+		padding: 0.85rem 1.5rem;
+	}
+
 	.logout-btn {
-		width: 100%;
-		margin-top: 1rem;
-		padding: 0.95rem;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: var(--surface);
+		display: block;
+		width: auto;
+		margin: 0 auto;
+		padding: 0.5rem 1.25rem;
+		border: none;
+		border-radius: var(--radius-pill);
+		background: transparent;
 		color: #c62828;
-		font-size: 1rem;
+		font-size: 0.88rem;
 		font-weight: 700;
 		cursor: pointer;
 		font-family: inherit;
-		box-shadow: 0 2px 10px var(--shadow);
 	}
 
 	.logout-btn:disabled {
@@ -404,7 +452,6 @@
 	.error,
 	.success {
 		text-align: center;
-		margin-top: 1rem;
 		font-size: 0.9rem;
 	}
 
@@ -413,7 +460,7 @@
 	}
 
 	.success {
-		color: #2e7d32;
+		color: #2e7d28;
 	}
 
 	@media (min-width: 900px) {
@@ -425,7 +472,11 @@
 			display: grid;
 			grid-template-columns: 1fr 1fr;
 			gap: 1.5rem;
-			align-items: start;
+			align-items: stretch;
+		}
+
+		.settings-grid > :global(.accent-card:first-child) {
+			min-height: 100%;
 		}
 	}
 </style>

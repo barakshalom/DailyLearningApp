@@ -8,7 +8,6 @@
 		backHref?: string;
 		backLabel?: string;
 		title?: string;
-		showSettings?: boolean;
 		wide?: boolean;
 	}
 
@@ -17,25 +16,20 @@
 		backHref = '/',
 		backLabel = '← חזרה',
 		title = '',
-		showSettings = false,
 		wide = false
 	}: Props = $props();
 </script>
 
 <header class="app-header" class:sub={variant === 'sub'} class:wide={wide}>
 	{#if variant === 'sub'}
-		<AppLogo size="sm" />
-		<div class="header-row">
-			<a href={backHref} class="nav-pill">{backLabel}</a>
+		<div class="sub-bar">
 			{#if title}
 				<h1 class="header-title">{title}</h1>
 			{/if}
-			{#if showSettings}
-				<a href="/settings" class="nav-pill">הגדרות</a>
-			{/if}
+			<a href={backHref} class="nav-pill back-link">{backLabel}</a>
 		</div>
 	{:else}
-		<AppLogo />
+		<AppLogo size="md" />
 		<nav class="header-nav">
 			<a href="/settings" class="nav-pill">הגדרות</a>
 			<a href="/history" class="nav-pill">היסטוריה</a>
@@ -54,8 +48,7 @@
 	}
 
 	.app-header.sub {
-		flex-direction: column;
-		align-items: stretch;
+		display: block;
 		max-width: 28rem;
 	}
 
@@ -63,19 +56,32 @@
 		max-width: 1400px;
 	}
 
-	.header-row {
+	.sub-bar {
+		position: relative;
+		width: 100%;
+		min-height: 2.75rem;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		margin-top: 0.75rem;
+		justify-content: center;
 	}
 
 	.header-title {
 		margin: 0;
+		width: 100%;
+		padding-inline: 6rem;
 		font-size: 1.35rem;
 		font-weight: 700;
 		color: var(--text-primary);
+		text-align: center;
+		box-sizing: border-box;
+	}
+
+	.back-link {
+		position: absolute;
+		top: 50%;
+		right: 0;
+		transform: translateY(-50%);
+		z-index: 1;
 	}
 
 	.header-nav {
@@ -98,5 +104,9 @@
 
 	:global(.nav-pill:hover) {
 		transform: translateY(-1px);
+	}
+
+	.back-link:hover {
+		transform: translateY(calc(-50% - 1px));
 	}
 </style>
