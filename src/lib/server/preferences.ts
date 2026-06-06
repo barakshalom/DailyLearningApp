@@ -13,7 +13,7 @@ export async function loadUserPreferences(
 		.select('topic_title, domain, segments, feedback, enjoyment')
 		.eq('user_id', userId)
 		.order('created_at', { ascending: false })
-		.limit(100);
+		.limit(30);
 
 	if (lessonsError) {
 		throw toError(lessonsError, 'שגיאה בטעינת היסטוריית שיעורים');
@@ -64,8 +64,8 @@ export async function loadUserPreferences(
 		.map(([domain]) => domain);
 
 	return {
-		learnedTopics,
-		learnedSummaries,
+		learnedTopics: learnedTopics.slice(0, 20),
+		learnedSummaries: learnedSummaries.slice(0, 10),
 		likedDomains,
 		dislikedDomains,
 		age,
