@@ -4,13 +4,19 @@ import {
 	formatAuthError,
 	normalizePassword,
 	normalizeUsername,
-	signInWithCredentials
+	registerWithCredentials
 } from '$lib/server/auth';
 import { isSupabaseConfigured, getSupabaseSetupMessage } from '$lib/supabase/config';
+import { getSupabaseAdmin } from '$lib/server/supabase-admin';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!isSupabaseConfigured()) {
 		error(503, getSupabaseSetupMessage());
+	}
+
+	const admin = getSupabaseAdmin();
+	if (!admin) {
+		error(503, 'חסר SUPABASE_SERVICE_ROLE_KEY ב-.env');
 	}
 
 	const body = await request.json();
@@ -27,7 +33,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		error(400, 'סיסמה לא תקינה (6–72 תווים)');
 	}
 
-	const { data, error: authError } = await signInWithCredentials(
+	const { data, error: authError } = await registerWithCredentials(
+		admin,
 		locals.supabase,
 		normalized,
 		normalizedPassword
@@ -38,7 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	if (!data.session) {
-		error(500, 'ההתחברות נכשלה');
+		error(500, 'ההרשמה נכשלה');
 	}
 
 	return json({

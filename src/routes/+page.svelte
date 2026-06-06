@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { isUnauthorized, parseApiError } from '$lib/api-errors';
 	import LessonView from '$lib/components/LessonView.svelte';
 	import FeedbackBar from '$lib/components/FeedbackBar.svelte';
 	import BottomAction from '$lib/components/BottomAction.svelte';
@@ -17,23 +19,18 @@
 
 	const feedbackComplete = $derived(lesson !== null && lesson.enjoyment !== null);
 
-	async function parseApiError(res: Response, fallback: string) {
-		const data = await res.json().catch(() => null);
-		const message = (data?.message as string | undefined) ?? fallback;
-
-		if (message.includes('permission denied for table lessons')) {
-			return 'חסרות הרשאות ב-Supabase — הרץ את supabase/fix_permissions.sql בעורך SQL';
+	async function handleUnauthorized(res: Response) {
+		if (isUnauthorized(res)) {
+			await goto('/login');
+			return true;
 		}
-		if (message.includes('quota') || message.includes('Quota')) {
-			return 'מכסת Gemini מלאה — נסה שוב מאוחר יותר או החלף מפתח API';
-		}
-
-		return message;
+		return false;
 	}
 
 	async function loadCurrentLesson() {
 		const res = await fetch('/api/lesson');
 		if (!res.ok) {
+			if (await handleUnauthorized(res)) return null;
 			throw new Error(await parseApiError(res, 'שגיאה בטעינת השיעור'));
 		}
 		const data = await res.json();
@@ -48,6 +45,7 @@
 		try {
 			const res = await fetch('/api/lesson', { method: 'POST' });
 			if (!res.ok) {
+				if (await handleUnauthorized(res)) return;
 				throw new Error(await parseApiError(res, 'שגיאה ביצירת שיעור'));
 			}
 			const data = await res.json();

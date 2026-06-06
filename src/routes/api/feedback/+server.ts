@@ -2,6 +2,14 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { feedbackFromEnjoyment } from '$lib/feedback';
 
+const SELECT_WITH_YOUTUBE =
+	'id, topic_title, domain, segments, image_url, youtube_query, feedback, enjoyment';
+const SELECT_WITHOUT_YOUTUBE = 'id, topic_title, domain, segments, image_url, feedback, enjoyment';
+
+function isMissingYoutubeColumn(message: string): boolean {
+	return message.toLowerCase().includes('youtube_query');
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const user = locals.user;
 	if (!user) error(401, 'Unauthorized');
@@ -22,18 +30,36 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const feedback = feedbackFromEnjoyment(enjoyment);
 
-	const { data, error: dbError } = await locals.supabase
+	let result = await locals.supabase
 		.from('lessons')
-		.update({
-			feedback,
-			enjoyment
-		})
+		.update({ feedback, enjoyment })
 		.eq('id', lessonId)
 		.eq('user_id', user.id)
-		.select('id, topic_title, domain, segments, image_url, youtube_query, feedback, enjoyment')
+		.select(SELECT_WITH_YOUTUBE)
 		.single();
 
-	if (dbError) error(500, dbError.message);
+	if (result.error && isMissingYoutubeColumn(result.error.message)) {
+		result = await locals.supabase
+			.from('lessons')
+			.update({ feedback, enjoyment })
+			.eq('id', lessonId)
+			.eq('user_id', user.id)
+			.select(SELECT_WITHOUT_YOUTUBE)
+			.single();
+	}
+
+	if (result.error) error(500, result.error.message);
+
+	const data = result.data as {
+		id: string;
+		topic_title: string;
+		domain: string;
+		segments: string[];
+		image_url: string | null;
+		youtube_query?: string | null;
+		feedback: string | null;
+		enjoyment: number | null;
+	};
 
 	return json({
 		lesson: {
@@ -42,7 +68,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			domain: data.domain,
 			segments: data.segments,
 			imageUrl: data.image_url,
-			youtubeQuery: data.youtube_query,
+			youtubeQuery: data.youtube_query ?? null,
 			feedback: data.feedback,
 			enjoyment: data.enjoyment
 		}
