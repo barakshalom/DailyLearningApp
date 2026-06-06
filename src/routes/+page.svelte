@@ -4,7 +4,12 @@
 	import { isUnauthorized, parseApiError } from '$lib/api-errors';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
+	import WelcomeHero from '$lib/components/WelcomeHero.svelte';
+	import AccentCard from '$lib/components/AccentCard.svelte';
 	import TopicPicker from '$lib/components/TopicPicker.svelte';
+	import StreakBadge from '$lib/components/StreakBadge.svelte';
+	import { SEGMENT_ACCENTS } from '$lib/prompts/lesson';
+	import { computeStreak } from '$lib/streak';
 	import { getSelectedTopic, setSelectedTopic } from '$lib/selected-topic';
 	import type { Lesson, LessonPayload } from '$lib/types/lesson';
 	import type { TopicKey } from '$lib/topics';
@@ -14,17 +19,11 @@
 	let recentLessons = $state<Lesson[]>([]);
 	let unfinishedLesson = $state<LessonPayload | null>(null);
 	let totalLessons = $state(0);
-	let avgRating = $state<string>('—');
 	let loading = $state(true);
 	let starting = $state(false);
 	let errorMsg = $state('');
 
-	function computeAvgRating(lessons: Lesson[]): string {
-		const rated = lessons.filter((l) => l.enjoyment != null);
-		if (rated.length === 0) return '—';
-		const sum = rated.reduce((acc, l) => acc + (l.enjoyment ?? 0), 0);
-		return (sum / rated.length).toFixed(1);
-	}
+	let streak = $derived(computeStreak(allLessons));
 
 	onMount(async () => {
 		selectedTopic = getSelectedTopic();
@@ -46,7 +45,6 @@
 			const historyData = await historyRes.json();
 			allLessons = historyData.lessons as Lesson[];
 			totalLessons = allLessons.length;
-			avgRating = computeAvgRating(allLessons);
 			recentLessons = allLessons.slice(0, 6);
 
 			if (lessonRes.ok) {
@@ -90,42 +88,38 @@
 			<DecorativeBg />
 
 			<div class="home-grid">
-				{#if !loading && totalLessons > 0}
-					<div class="stats-row">
-						<div class="stat-pill">
-							<span class="stat-value">{totalLessons}</span>
-							<span class="stat-label">שיעורים</span>
-						</div>
-						<div class="stat-pill">
-							<span class="stat-value">{avgRating}</span>
-							<span class="stat-label">דירוג ממוצע</span>
-						</div>
-					</div>
-				{/if}
-
-				{#if unfinishedLesson}
-					<div class="resume-banner">
-						<div class="resume-text">
-							<strong>יש לך שיעור שלא סיימת</strong>
-							<p>{unfinishedLesson.topicTitle}</p>
-						</div>
-						<a href="/lesson" class="resume-btn">המשך שיעור</a>
-					</div>
-				{/if}
+				<div class="welcome-wrap">
+					<WelcomeHero logoSize="lg">
+						{#if !loading && (totalLessons > 0 || streak.count > 0)}
+							<div class="stat-tile mint">
+								<span class="stat-value">{totalLessons}</span>
+								<span class="stat-label">שיעורים</span>
+							</div>
+							<div class="stat-tile yellow">
+								<StreakBadge
+									count={streak.count}
+									todayPending={streak.todayPending}
+									todayEarned={streak.todayEarned}
+								/>
+							</div>
+						{/if}
+					</WelcomeHero>
+				</div>
 
 				<div class="home-left">
-					<section class="hero-card">
-						<h1>מה נלמד היום?</h1>
-						<p>
-							בחר נושא שמעניין אותך וקבל שיעור קצר של כ-5 דקות — רעיון אחד חדש, מוסבר
-							בצורה ברורה וזכירה.
-						</p>
-					</section>
-
-					<section class="topic-card">
-						<h2>מה תרצה ללמוד?</h2>
+					<AccentCard title="מה תרצה ללמוד?" accent="lavender">
 						<TopicPicker value={selectedTopic} onchange={handleTopicChange} />
-					</section>
+					</AccentCard>
+
+					{#if unfinishedLesson}
+						<div class="resume-compact">
+							<div class="resume-compact-text">
+								<span class="resume-label">שיעור פתוח</span>
+								<span class="resume-topic">{unfinishedLesson.topicTitle}</span>
+							</div>
+							<a href="/lesson" class="resume-link">המשך שיעור</a>
+						</div>
+					{/if}
 
 					<button type="button" class="start-btn" disabled={starting} onclick={startLesson}>
 						{#if starting}
@@ -141,25 +135,37 @@
 				</div>
 
 				<aside class="home-right">
-					<section class="recent-section">
-						<div class="recent-header">
-							<h2>למדת לאחרונה</h2>
-							{#if recentLessons.length > 0}
+					<AccentCard title="למדת לאחרונה" accent="yellow" fill>
+						{#if recentLessons.length > 0}
+							<div class="recent-header">
 								<a href="/history" class="nav-pill">הכל</a>
-							{/if}
-						</div>
+							</div>
+						{/if}
 
 						{#if loading}
 							<p class="recent-status">טוען...</p>
 						{:else if recentLessons.length === 0}
-							<p class="recent-empty">עדיין לא למדת — התחל שיעור ראשון!</p>
+							<div class="recent-empty">
+								<svg viewBox="0 0 24 24" fill="var(--mint)" aria-hidden="true">
+									<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
+								</svg>
+								<p>עדיין לא למדת — התחל שיעור ראשון!</p>
+							</div>
 						{:else}
 							<ul class="recent-list">
-								{#each recentLessons as lesson}
-									<li class="recent-item">
+								{#each recentLessons as lesson, i}
+									<li
+										class="recent-item"
+										style="border-inline-start-color: {SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length]}"
+									>
 										<div class="recent-meta">
 											<span class="domain">{lesson.domain}</span>
-											<span class="date">{formatDate(lesson.created_at)}</span>
+											<div class="meta-end">
+												{#if lesson.enjoyment}
+													<span class="rating">{lesson.enjoyment}/5</span>
+												{/if}
+												<span class="date">{formatDate(lesson.created_at)}</span>
+											</div>
 										</div>
 										<h3>{lesson.topic_title}</h3>
 										{#if lesson.segments?.[0]}
@@ -169,7 +175,7 @@
 								{/each}
 							</ul>
 						{/if}
-					</section>
+					</AccentCard>
 				</aside>
 			</div>
 		</div>
@@ -190,6 +196,7 @@
 		position: relative;
 		max-width: 1400px;
 		margin: 0 auto;
+		min-height: calc(100dvh - 5rem);
 	}
 
 	.home-grid {
@@ -200,118 +207,98 @@
 		gap: 1rem;
 	}
 
-	.stats-row {
-		display: flex;
-		gap: 0.75rem;
-		flex-wrap: wrap;
+	.welcome-wrap {
+		width: 100%;
 	}
 
-	.stat-pill {
+	.stat-tile {
 		display: flex;
-		align-items: baseline;
-		gap: 0.4rem;
-		background: var(--surface);
-		border-radius: var(--radius-pill);
-		padding: 0.6rem 1.1rem;
-		box-shadow: 0 2px 10px var(--shadow);
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-width: 6.5rem;
+		min-height: 4.5rem;
+		padding: 0.75rem 1.25rem;
+		border-radius: var(--radius-lg);
+		box-shadow: 0 4px 16px var(--shadow);
+	}
+
+	.stat-tile.mint {
+		background: color-mix(in srgb, var(--mint) 55%, white);
+	}
+
+	.stat-tile.yellow {
+		background: color-mix(in srgb, var(--yellow) 55%, white);
 	}
 
 	.stat-value {
-		font-size: 1.25rem;
+		font-size: 1.5rem;
 		font-weight: 700;
 		color: var(--text-primary);
+		line-height: 1.2;
 	}
 
 	.stat-label {
-		font-size: 0.85rem;
+		font-size: 0.8rem;
 		color: var(--text-muted);
 		font-weight: 600;
 	}
 
-	.resume-banner {
+	.resume-compact {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 1rem;
-		flex-wrap: wrap;
-		background: var(--yellow);
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
 		border-radius: var(--radius-lg);
-		padding: 1rem 1.25rem;
-		box-shadow: 0 4px 16px var(--shadow);
+		background: color-mix(in srgb, var(--lavender) 30%, var(--surface));
+		border: 1px solid color-mix(in srgb, var(--lavender) 50%, var(--border));
 	}
 
-	.resume-text strong {
-		display: block;
-		font-size: 0.9rem;
-		color: var(--text-primary);
-		margin-bottom: 0.25rem;
+	.resume-compact-text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		min-width: 0;
+		text-align: right;
 	}
 
-	.resume-text p {
-		margin: 0;
-		font-size: 0.95rem;
+	.resume-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--text-muted);
+	}
+
+	.resume-topic {
+		font-size: 0.88rem;
 		font-weight: 600;
 		color: var(--text-primary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
-	.resume-btn {
+	.resume-link {
 		flex-shrink: 0;
-		padding: 0.65rem 1.25rem;
+		padding: 0.45rem 0.9rem;
 		border-radius: var(--radius-pill);
-		background: var(--card-dark);
-		color: white;
-		font-size: 0.9rem;
+		border: 1.5px solid var(--lavender);
+		background: var(--surface);
+		color: var(--text-primary);
+		font-size: 0.82rem;
 		font-weight: 700;
 		text-decoration: none;
-		box-shadow: 0 2px 10px var(--shadow);
+		transition: background 0.15s;
+	}
+
+	.resume-link:hover {
+		background: color-mix(in srgb, var(--lavender) 25%, var(--surface));
 	}
 
 	.home-left {
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
-	}
-
-	.hero-card {
-		background: linear-gradient(
-			135deg,
-			color-mix(in srgb, var(--mint) 40%, white),
-			color-mix(in srgb, var(--lavender) 40%, white)
-		);
-		border-radius: var(--radius-xl);
-		padding: 1.75rem 1.5rem;
-		box-shadow: 0 4px 20px var(--shadow);
-		text-align: center;
-	}
-
-	.topic-card {
-		background: var(--surface);
-		border-radius: var(--radius-xl);
-		padding: 1.5rem;
-		box-shadow: 0 8px 32px var(--shadow-lg);
-		text-align: right;
-	}
-
-	.hero-card h1 {
-		margin: 0 0 0.5rem;
-		font-size: 1.75rem;
-		font-weight: 700;
-		color: var(--text-primary);
-	}
-
-	.hero-card p {
-		margin: 0;
-		font-size: 0.95rem;
-		line-height: 1.6;
-		color: var(--text-muted);
-	}
-
-	.topic-card h2,
-	.recent-section h2 {
-		margin: 0 0 0.85rem;
-		font-size: 1rem;
-		font-weight: 700;
-		color: var(--text-primary);
 	}
 
 	.start-btn {
@@ -321,7 +308,7 @@
 		border-radius: var(--radius-lg);
 		background: var(--mint);
 		color: var(--card-dark);
-		font-size: 1.2rem;
+		font-size: 1.15rem;
 		font-weight: 700;
 		cursor: pointer;
 		font-family: inherit;
@@ -338,19 +325,10 @@
 		cursor: not-allowed;
 	}
 
-	.recent-section {
-		background: var(--surface);
-		border-radius: var(--radius-xl);
-		padding: 1.25rem 1.5rem;
-		box-shadow: 0 8px 32px var(--shadow-lg);
-		height: 100%;
-	}
-
 	.recent-header {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 0.75rem;
+		justify-content: start;
+		margin: -0.5rem 0 0.65rem;
 	}
 
 	.recent-list {
@@ -367,13 +345,22 @@
 		border-radius: var(--radius-lg);
 		padding: 1rem 1.15rem;
 		box-shadow: 0 2px 8px var(--shadow);
+		border-inline-start: 3px solid var(--mint);
 	}
 
 	.recent-meta {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		gap: 0.5rem;
 		margin-bottom: 0.35rem;
+	}
+
+	.meta-end {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		flex-shrink: 0;
 	}
 
 	.domain {
@@ -382,6 +369,15 @@
 		color: var(--text-primary);
 		background: var(--lavender);
 		padding: 0.2rem 0.55rem;
+		border-radius: var(--radius-pill);
+	}
+
+	.rating {
+		font-size: 0.7rem;
+		font-weight: 700;
+		color: var(--accent);
+		background: color-mix(in srgb, var(--yellow) 50%, white);
+		padding: 0.15rem 0.45rem;
 		border-radius: var(--radius-pill);
 	}
 
@@ -409,13 +405,33 @@
 		overflow: hidden;
 	}
 
-	.recent-status,
-	.recent-empty {
+	.recent-status {
 		margin: 0;
 		font-size: 0.9rem;
 		color: var(--text-muted);
 		text-align: center;
 		padding: 1rem 0;
+	}
+
+	.recent-empty {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.65rem;
+		padding: 1.5rem 0.5rem;
+		text-align: center;
+	}
+
+	.recent-empty svg {
+		width: 1.5rem;
+		height: 1.5rem;
+		opacity: 0.8;
+	}
+
+	.recent-empty p {
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--text-muted);
 	}
 
 	.error {
@@ -431,22 +447,13 @@
 
 		.home-grid {
 			display: grid;
-			grid-template-columns: 1fr min(480px, 35%);
+			grid-template-columns: 1fr min(520px, 38%);
 			gap: 1.5rem;
 			align-items: start;
 		}
 
-		.stats-row,
-		.resume-banner {
+		.welcome-wrap {
 			grid-column: 1 / -1;
-		}
-
-		.hero-card {
-			padding: 2rem;
-		}
-
-		.hero-card h1 {
-			font-size: 2rem;
 		}
 
 		.home-right {
