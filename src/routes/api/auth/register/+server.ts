@@ -2,6 +2,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import {
 	formatAuthError,
+	normalizeAge,
 	normalizePassword,
 	normalizeUsername,
 	registerWithCredentials
@@ -22,6 +23,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const body = await request.json();
 	const username = body?.username as string | undefined;
 	const password = body?.password as string | undefined;
+	const age = normalizeAge(body?.age);
 
 	const normalized = username ? normalizeUsername(username) : null;
 	const normalizedPassword = password ? normalizePassword(password) : null;
@@ -32,25 +34,38 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!normalizedPassword) {
 		error(400, 'סיסמה לא תקינה (6–72 תווים)');
 	}
+	if (age === null) {
+		error(400, 'גיל לא תקין (8–120)');
+	}
 
 	const { data, error: authError } = await registerWithCredentials(
 		admin,
 		locals.supabase,
 		normalized,
-		normalizedPassword
+		normalizedPassword,
+		{ age }
 	);
 
 	if (authError) {
 		error(400, formatAuthError(authError.message));
 	}
 
-	if (!data.session) {
+	if (!data.session || !data.user) {
 		error(500, 'ההרשמה נכשלה');
+	}
+
+	const { error: profileError } = await locals.supabase.from('profiles').insert({
+		user_id: data.user.id,
+		age
+	});
+
+	if (profileError) {
+		error(500, 'ההרשמה הצליחה אך שמירת הפרופיל נכשלה');
 	}
 
 	return json({
 		ok: true,
 		username: normalized,
-		displayName: data.user?.user_metadata?.display_name ?? normalized
+		displayName: data.user.user_metadata?.display_name ?? normalized
 	});
 };

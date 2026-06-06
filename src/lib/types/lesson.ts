@@ -1,3 +1,5 @@
+import type { TopicKey } from '$lib/topics';
+
 export type Feedback = 'liked' | 'disliked' | null;
 
 export interface Lesson {
@@ -10,6 +12,7 @@ export interface Lesson {
 	youtube_query: string | null;
 	feedback: Feedback;
 	enjoyment: number | null;
+	requested_topic?: string;
 	created_at: string;
 }
 
@@ -22,6 +25,7 @@ export interface LessonPayload {
 	youtubeQuery: string | null;
 	feedback: Feedback;
 	enjoyment: number | null;
+	requestedTopic: TopicKey;
 }
 
 export interface UserPreferences {
@@ -29,4 +33,6 @@ export interface UserPreferences {
 	learnedSummaries: string[];
 	likedDomains: string[];
 	dislikedDomains: string[];
+	age: number | null;
+	preferredTopic: TopicKey;
 }

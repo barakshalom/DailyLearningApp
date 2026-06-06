@@ -10,14 +10,24 @@ create table if not exists lessons (
   youtube_query text,
   feedback text check (feedback in ('liked', 'disliked')),
   enjoyment smallint check (enjoyment between 1 and 5),
+  requested_topic text not null default 'random',
   created_at timestamptz not null default now()
 );
 
 create index if not exists lessons_user_id_created_at_idx
   on lessons (user_id, created_at desc);
 
+create table if not exists profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  age smallint check (age between 8 and 120),
+  preferred_topic text not null default 'random',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 grant usage on schema public to anon, authenticated;
 grant select, insert, update on public.lessons to authenticated;
+grant select, insert, update on public.profiles to authenticated;
 
 alter table lessons enable row level security;
 
@@ -32,3 +42,10 @@ create policy "Users can insert own lessons"
 create policy "Users can update own lessons"
   on lessons for update
   using (auth.uid() = user_id);
+
+alter table profiles enable row level security;
+
+create policy "Users manage own profile"
+  on profiles for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
