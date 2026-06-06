@@ -1,18 +1,21 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { isSupabaseConfigured, getSupabaseSetupMessage } from '$lib/supabase/config';
 	import AppLogo from '$lib/components/AppLogo.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
 
-	let email = $state('');
+	type Mode = 'login' | 'register';
+
+	let mode = $state<Mode>('login');
+	let username = $state('');
+	let password = $state('');
 	let loading = $state(false);
-	let sent = $state(false);
 	let errorMsg = $state('');
 
 	const configured = isSupabaseConfigured();
 	const setupMessage = getSupabaseSetupMessage();
 
-	async function handleLogin(e: SubmitEvent) {
+	async function handleSubmit(e: SubmitEvent) {
 		e.preventDefault();
 
 		if (!configured) {
@@ -23,22 +26,24 @@
 		loading = true;
 		errorMsg = '';
 
+		const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
+
 		try {
-			const res = await fetch('/api/auth/login', {
+			const res = await fetch(endpoint, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email })
+				body: JSON.stringify({ username, password })
 			});
 
 			if (!res.ok) {
 				const data = await res.json().catch(() => null);
-				throw new Error(data?.message ?? 'שליחת הקישור נכשלה');
+				throw new Error(data?.message ?? (mode === 'login' ? 'ההתחברות נכשלה' : 'ההרשמה נכשלה'));
 			}
 
-			sent = true;
+			await goto('/');
 		} catch (e) {
 			if (e instanceof TypeError) {
-				errorMsg = 'בעיית רשת — בדוק את חיבור האינטרנט והגדרות Supabase';
+				errorMsg = 'בעיית רשת — בדוק את חיבור האינטרנט';
 			} else {
 				errorMsg = e instanceof Error ? e.message : 'שגיאה לא צפויה';
 			}
@@ -47,7 +52,10 @@
 		}
 	}
 
-	const authError = $derived($page.url.searchParams.get('error') === 'auth');
+	function setMode(next: Mode) {
+		mode = next;
+		errorMsg = '';
+	}
 </script>
 
 <main class="login-page">
@@ -71,35 +79,65 @@
 			</div>
 		{/if}
 
-		{#if authError}
-			<p class="error">ההתחברות נכשלה. נסה שוב.</p>
-		{/if}
+		<div class="mode-tabs" role="tablist">
+			<button
+				type="button"
+				class:active={mode === 'login'}
+				role="tab"
+				aria-selected={mode === 'login'}
+				onclick={() => setMode('login')}
+			>
+				התחבר
+			</button>
+			<button
+				type="button"
+				class:active={mode === 'register'}
+				role="tab"
+				aria-selected={mode === 'register'}
+				onclick={() => setMode('register')}
+			>
+				הרשמה
+			</button>
+		</div>
 
-		{#if sent}
-			<div class="success">
-				<p>שלחנו לך קישור למייל</p>
-				<p class="hint">לחץ על הקישור כדי להתחבר</p>
-			</div>
-		{:else}
-			<form onsubmit={handleLogin}>
-				<label for="email">הזן את המייל שלך</label>
-				<input
-					id="email"
-					type="email"
-					bind:value={email}
-					placeholder="you@example.com"
-					required
-					dir="ltr"
-					autocomplete="email"
-					disabled={!configured}
-				/>
-				<button type="submit" disabled={loading || !configured}>
-					{loading ? 'שולח...' : 'שלח קישור התחברות'}
-				</button>
-			</form>
-			{#if errorMsg}
-				<p class="error">{errorMsg}</p>
-			{/if}
+		<form onsubmit={handleSubmit}>
+			<label for="username">שם משתמש</label>
+			<input
+				id="username"
+				type="text"
+				bind:value={username}
+				placeholder="הזן שם משתמש"
+				required
+				minlength="2"
+				maxlength="32"
+				autocomplete="username"
+				disabled={!configured || loading}
+			/>
+
+			<label for="password">סיסמה</label>
+			<input
+				id="password"
+				type="password"
+				bind:value={password}
+				placeholder="לפחות 6 תווים"
+				required
+				minlength="6"
+				maxlength="72"
+				autocomplete={mode === 'login' ? 'current-password' : 'new-password'}
+				disabled={!configured || loading}
+			/>
+
+			<button type="submit" disabled={loading || !configured}>
+				{#if loading}
+					{mode === 'login' ? 'מתחבר...' : 'נרשם...'}
+				{:else}
+					{mode === 'login' ? 'התחבר' : 'צור חשבון'}
+				{/if}
+			</button>
+		</form>
+
+		{#if errorMsg}
+			<p class="error">{errorMsg}</p>
 		{/if}
 	</div>
 </main>
@@ -133,9 +171,38 @@
 	}
 
 	.subtitle {
-		margin: 0 0 2rem;
+		margin: 0 0 1.5rem;
 		color: var(--text-muted);
 		font-size: 0.95rem;
+	}
+
+	.mode-tabs {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 1.25rem;
+		background: var(--bg);
+		padding: 0.35rem;
+		border-radius: var(--radius-pill);
+	}
+
+	.mode-tabs button {
+		flex: 1;
+		padding: 0.55rem 1rem;
+		border: none;
+		border-radius: var(--radius-pill);
+		background: transparent;
+		color: var(--text-muted);
+		font-size: 0.9rem;
+		font-weight: 600;
+		cursor: pointer;
+		font-family: inherit;
+		transition: all 0.15s;
+	}
+
+	.mode-tabs button.active {
+		background: var(--surface);
+		color: var(--text-primary);
+		box-shadow: 0 2px 8px var(--shadow);
 	}
 
 	.setup-notice {
@@ -223,25 +290,6 @@
 	button[type='submit']:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
-	}
-
-	.success {
-		padding: 1rem;
-		background: var(--yellow);
-		border-radius: var(--radius-lg);
-	}
-
-	.success p {
-		margin: 0;
-		color: var(--text-primary);
-		font-weight: 600;
-	}
-
-	.hint {
-		margin-top: 0.5rem !important;
-		font-weight: 400 !important;
-		font-size: 0.85rem;
-		color: var(--text-muted);
 	}
 
 	.error {

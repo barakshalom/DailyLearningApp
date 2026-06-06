@@ -2,14 +2,17 @@ import { createServerClient } from '@supabase/ssr';
 import { type Handle, redirect } from '@sveltejs/kit';
 import { sequence } from '@sveltejs/kit/hooks';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
+import { authCookieOptions } from '$lib/supabase/cookies';
 
 const supabaseHandle: Handle = async ({ event, resolve }) => {
+	const secure = event.url.protocol === 'https:';
+
 	event.locals.supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		cookies: {
 			getAll: () => event.cookies.getAll(),
 			setAll: (cookiesToSet) => {
 				cookiesToSet.forEach(({ name, value, options }) => {
-					event.cookies.set(name, value, { ...options, path: '/' });
+					event.cookies.set(name, value, authCookieOptions(options, secure));
 				});
 			}
 		}
@@ -46,9 +49,9 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const pathname = event.url.pathname;
 	const isApi = pathname.startsWith('/api/');
 	const isAuthRoute =
-		pathname.startsWith('/auth/') ||
 		pathname === '/login' ||
-		pathname === '/api/auth/login';
+		pathname === '/api/auth/login' ||
+		pathname === '/api/auth/register';
 	const isProtected =
 		pathname === '/' || pathname === '/history' || pathname.startsWith('/history/');
 
