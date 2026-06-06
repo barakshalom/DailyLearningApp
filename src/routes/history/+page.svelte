@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { isUnauthorized, parseApiError } from '$lib/api-errors';
 	import AppLogo from '$lib/components/AppLogo.svelte';
 	import type { Lesson } from '$lib/types/lesson';
 
@@ -10,7 +12,13 @@
 	onMount(async () => {
 		try {
 			const res = await fetch('/api/history');
-			if (!res.ok) throw new Error('Failed to load history');
+			if (!res.ok) {
+				if (isUnauthorized(res)) {
+					await goto('/login');
+					return;
+				}
+				throw new Error(await parseApiError(res, 'שגיאה בטעינת ההיסטוריה'));
+			}
 			const data = await res.json();
 			lessons = data.lessons;
 		} catch (e) {
