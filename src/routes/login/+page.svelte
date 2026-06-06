@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { isSupabaseConfigured, getSupabaseSetupMessage } from '$lib/supabase/config';
+	import { USER_EXISTS_MESSAGE } from '$lib/auth-messages';
 	import AppLogo from '$lib/components/AppLogo.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
 
@@ -9,6 +10,7 @@
 	let mode = $state<Mode>('login');
 	let username = $state('');
 	let password = $state('');
+	let age = $state('');
 	let loading = $state(false);
 	let errorMsg = $state('');
 
@@ -29,15 +31,25 @@
 		const endpoint = mode === 'login' ? '/api/auth/login' : '/api/auth/register';
 
 		try {
+			const body =
+				mode === 'login'
+					? { username, password }
+					: { username, password, age: Number(age) };
+
 			const res = await fetch(endpoint, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username, password })
+				body: JSON.stringify(body)
 			});
 
 			if (!res.ok) {
 				const data = await res.json().catch(() => null);
-				throw new Error(data?.message ?? (mode === 'login' ? 'ההתחברות נכשלה' : 'ההרשמה נכשלה'));
+				const message =
+					data?.message ?? (mode === 'login' ? 'ההתחברות נכשלה' : 'ההרשמה נכשלה');
+				if (mode === 'register' && message === USER_EXISTS_MESSAGE) {
+					mode = 'login';
+				}
+				throw new Error(message);
 			}
 
 			await goto('/');
@@ -126,6 +138,21 @@
 				autocomplete={mode === 'login' ? 'current-password' : 'new-password'}
 				disabled={!configured || loading}
 			/>
+
+			{#if mode === 'register'}
+				<label for="age">גיל</label>
+				<input
+					id="age"
+					type="number"
+					bind:value={age}
+					placeholder="לדוגמה 25"
+					required
+					min="8"
+					max="120"
+					inputmode="numeric"
+					disabled={!configured || loading}
+				/>
+			{/if}
 
 			<button type="submit" disabled={loading || !configured}>
 				{#if loading}

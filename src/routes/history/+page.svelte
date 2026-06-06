@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { isUnauthorized, parseApiError } from '$lib/api-errors';
-	import AppLogo from '$lib/components/AppLogo.svelte';
+	import AppHeader from '$lib/components/AppHeader.svelte';
 	import type { Lesson } from '$lib/types/lesson';
 
 	let lessons = $state<Lesson[]>([]);
@@ -38,13 +38,7 @@
 </script>
 
 <main class="history-page">
-	<header class="page-header">
-		<AppLogo size="sm" />
-		<div class="header-row">
-			<a href="/" class="nav-pill">← חזרה</a>
-			<h1>מה למדתי</h1>
-		</div>
-	</header>
+	<AppHeader variant="sub" title="מה למדתי" showSettings wide />
 
 	{#if loading}
 		<p class="status">טוען...</p>
@@ -78,37 +72,6 @@
 		padding: 1.5rem 1.25rem 3rem;
 		max-width: 1400px;
 		margin: 0 auto;
-	}
-
-	.page-header {
-		margin-bottom: 1.5rem;
-	}
-
-	.header-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
-		margin-top: 0.75rem;
-	}
-
-	.nav-pill {
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: var(--text-primary);
-		background: var(--surface);
-		padding: 0.4rem 0.9rem;
-		border-radius: var(--radius-pill);
-		text-decoration: none;
-		box-shadow: 0 2px 8px var(--shadow);
-		flex-shrink: 0;
-	}
-
-	.page-header h1 {
-		margin: 0;
-		font-size: 1.75rem;
-		font-weight: 700;
-		color: var(--text-primary);
 	}
 
 	.status,
