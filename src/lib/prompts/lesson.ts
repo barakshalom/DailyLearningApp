@@ -1,4 +1,5 @@
 import type { UserPreferences } from '$lib/types/lesson';
+import { getTopicLabel } from '$lib/topics';
 
 const BASE_PROMPT = `אתה מורה יוצא דופן שמסביר רעיונות בצורה חדה, מדויקת וזכירה; המטרה שלך היא שאבין לעומק משהו חדש כך שאזכור אותו גם שבוע אחרי; בחר נושא לא טrivialי מתחום כלשהו וצור יחידת לימוד לפי רצף קבוע של 8 קטעים.
 
@@ -21,8 +22,30 @@ const BASE_PROMPT = `אתה מורה יוצא דופן שמסביר רעיונו
 
 כללים: אל תהיה גנרי או משעמם, אל תכתוב כמו ספר לימוד, אל תשתמש באנלוגיות או מטאפורות בכלל, היה תמציתי אבל עם עומק אמיתי, ובחר נושא מעניין ולא שחוק. כל הפלט חייב להיות בעברית (מלבד IMAGE_QUERY ו-YOUTUBE_QUERY שחייבים להיות באנגלית).`;
 
+function buildAgePrompt(age: number): string {
+	let depth = 'עומק מלא כרגיל';
+	if (age <= 12) {
+		depth = 'משפטים קצרים, מושגים בסיסיים';
+	} else if (age <= 17) {
+		depth = 'ברור אך לא מתקדם מדי';
+	}
+
+	return `\nהלומד בן/בת ${age}. התאם את רמת השפה והעומק:\n- גילאי 8–12: משפטים קצרים, מושגים בסיסיים\n- 13–17: ברור אך לא מתקדם מדי\n- 18+: עומק מלא כרגיל\nבחר את הרמה המתאימה: ${depth}.`;
+}
+
 export function buildLessonPrompt(prefs: UserPreferences): string {
 	const parts = [BASE_PROMPT];
+
+	if (prefs.age !== null) {
+		parts.push(buildAgePrompt(prefs.age));
+	}
+
+	if (prefs.preferredTopic !== 'random') {
+		const label = getTopicLabel(prefs.preferredTopic);
+		parts.push(
+			`\nבחר נושא חדש מתחום "${label}" בלבד. שורת DOMAIN חייבת להיות "${label}".`
+		);
+	}
 
 	if (prefs.learnedTopics.length > 0) {
 		parts.push(

@@ -51,9 +51,14 @@ const authGuard: Handle = async ({ event, resolve }) => {
 	const isAuthRoute =
 		pathname === '/login' ||
 		pathname === '/api/auth/login' ||
-		pathname === '/api/auth/register';
+		pathname === '/api/auth/register' ||
+		pathname === '/api/auth/logout';
 	const isProtected =
-		pathname === '/' || pathname === '/history' || pathname.startsWith('/history/');
+		pathname === '/' ||
+		pathname === '/lesson' ||
+		pathname === '/history' ||
+		pathname.startsWith('/history/') ||
+		pathname === '/settings';
 
 	if (!session && !isAuthRoute && (isProtected || isApi)) {
 		if (isApi) {

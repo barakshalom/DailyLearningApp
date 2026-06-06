@@ -1,18 +1,38 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { UserPreferences } from '$lib/types/lesson';
+import type { TopicKey } from '$lib/topics';
+import { isMissingProfilesError, toError } from '$lib/server/errors';
 
 export async function loadUserPreferences(
 	supabase: SupabaseClient,
-	userId: string
+	userId: string,
+	topic: TopicKey = 'random'
 ): Promise<UserPreferences> {
-	const { data: lessons, error } = await supabase
+	const { data: lessons, error: lessonsError } = await supabase
 		.from('lessons')
 		.select('topic_title, domain, segments, feedback, enjoyment')
 		.eq('user_id', userId)
 		.order('created_at', { ascending: false })
 		.limit(100);
 
-	if (error) throw error;
+	if (lessonsError) {
+		throw toError(lessonsError, 'שגיאה בטעינת היסטוריית שיעורים');
+	}
+
+	const { data: profile, error: profileError } = await supabase
+		.from('profiles')
+		.select('age')
+		.eq('user_id', userId)
+		.maybeSingle();
+
+	let age: number | null = null;
+	if (profileError) {
+		if (!isMissingProfilesError(profileError.message)) {
+			throw toError(profileError, 'שגיאה בטעינת פרופיל');
+		}
+	} else {
+		age = profile?.age ?? null;
+	}
 
 	const learnedTopics: string[] = [];
 	const learnedSummaries: string[] = [];
@@ -43,5 +63,12 @@ export async function loadUserPreferences(
 		.filter(([, score]) => score < 0)
 		.map(([domain]) => domain);
 
-	return { learnedTopics, learnedSummaries, likedDomains, dislikedDomains };
+	return {
+		learnedTopics,
+		learnedSummaries,
+		likedDomains,
+		dislikedDomains,
+		age,
+		preferredTopic: topic
+	};
 }
