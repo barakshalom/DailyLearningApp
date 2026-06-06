@@ -1,0 +1,32 @@
+export type Feedback = 'liked' | 'disliked' | null;
+
+export interface Lesson {
+	id: string;
+	user_id: string;
+	topic_title: string;
+	domain: string;
+	segments: string[];
+	image_url: string | null;
+	youtube_query: string | null;
+	feedback: Feedback;
+	enjoyment: number | null;
+	created_at: string;
+}
+
+export interface LessonPayload {
+	id: string;
+	topicTitle: string;
+	domain: string;
+	segments: string[];
+	imageUrl: string | null;
+	youtubeQuery: string | null;
+	feedback: Feedback;
+	enjoyment: number | null;
+}
+
+export interface UserPreferences {
+	learnedTopics: string[];
+	learnedSummaries: string[];
+	likedDomains: string[];
+	dislikedDomains: string[];
+}
