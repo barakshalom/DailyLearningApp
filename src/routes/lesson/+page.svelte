@@ -8,6 +8,7 @@
 	import LessonEndActions from '$lib/components/LessonEndActions.svelte';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
+	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import { feedbackFromEnjoyment } from '$lib/feedback';
 	import { getCustomTopic, getSelectedTopic, setCustomTopic, setSelectedTopic } from '$lib/selected-topic';
 	import type { LessonPayload } from '$lib/types/lesson';
@@ -34,6 +35,7 @@
 				? 'הדירוג שלך'
 				: 'כמה נהנית מהשיעור?'
 	);
+	const loadingMessage = $derived(generating ? 'מכין שיעור...' : 'טוען שיעור...');
 
 	function clearFeedbackReveal() {
 		if (feedbackFallbackTimer) {
@@ -260,6 +262,10 @@
 	});
 </script>
 
+{#if loading || generating}
+	<LoadingScreen message={loadingMessage} />
+{/if}
+
 <div class="page">
 	{#if openedById && lesson}
 		<AppHeader variant="sub" title={lesson.topicTitle} backHref="/history" backLabel="← היסטוריה" />
@@ -278,14 +284,15 @@
 		<div class="lesson-shell">
 			<DecorativeBg />
 
-			<LessonView
-				topicTitle={lesson?.topicTitle ?? ''}
-				domain={lesson?.domain ?? ''}
-				segments={lesson?.segments ?? []}
-				imageUrl={lesson?.imageUrl}
-				youtubeQuery={lesson?.youtubeQuery}
-				loading={loading || generating}
-			/>
+			{#if !loading && !generating}
+				<LessonView
+					topicTitle={lesson?.topicTitle ?? ''}
+					domain={lesson?.domain ?? ''}
+					segments={lesson?.segments ?? []}
+					imageUrl={lesson?.imageUrl}
+					youtubeQuery={lesson?.youtubeQuery}
+				/>
+			{/if}
 
 			{#if lesson && !loading && !generating}
 				<div bind:this={feedbackSentinel} class="feedback-sentinel" aria-hidden="true"></div>

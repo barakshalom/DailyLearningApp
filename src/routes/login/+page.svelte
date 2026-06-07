@@ -4,6 +4,7 @@
 	import { USER_EXISTS_MESSAGE } from '$lib/auth-messages';
 	import AppLogo from '$lib/components/AppLogo.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
+	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 
 	type Mode = 'login' | 'register';
 
@@ -69,6 +70,10 @@
 		errorMsg = '';
 	}
 </script>
+
+{#if loading}
+	<LoadingScreen message={mode === 'login' ? 'מתחבר...' : 'נרשם...'} />
+{/if}
 
 <main class="login-page">
 	<DecorativeBg />

@@ -7,6 +7,7 @@
 	import AccentCard from '$lib/components/AccentCard.svelte';
 	import TopicPicker from '$lib/components/TopicPicker.svelte';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
+	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 	import { SEGMENT_ACCENTS } from '$lib/lesson-ui';
 	import { computeStreak } from '$lib/streak';
 	import {
@@ -26,7 +27,7 @@
 	let errorMsg = $state('');
 
 	const allLessons = $derived(data.lessons);
-	const recentLessons = $derived(data.lessons.slice(0, 6));
+	const recentLessons = $derived(data.lessons.slice(0, 15));
 	const totalLessons = $derived(data.lessons.length);
 	const streak = $derived(computeStreak(data.lessons));
 	const canStartNew = $derived(data.lessonStatus.canStartNew);
@@ -72,6 +73,10 @@
 		});
 	}
 </script>
+
+{#if starting}
+	<LoadingScreen message="מכין שיעור..." />
+{/if}
 
 <div class="page">
 	<AppHeader />
@@ -151,49 +156,51 @@
 				</div>
 
 				<aside class="home-right">
-					<AccentCard title="למדת לאחרונה" accent="yellow" fill>
+					<AccentCard title="למדת לאחרונה" accent="yellow" fill scrollable>
 						{#if recentLessons.length > 0}
 							<div class="recent-header">
 								<a href="/history" class="nav-pill" data-sveltekit-preload-data="hover">הכל</a>
 							</div>
 						{/if}
 
-						{#if recentLessons.length === 0}
-							<div class="recent-empty">
-								<svg viewBox="0 0 24 24" fill="var(--mint)" aria-hidden="true">
-									<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
-								</svg>
-								<p>עדיין לא למדת — התחל שיעור ראשון!</p>
-							</div>
-						{:else}
-							<ul class="recent-list">
-								{#each recentLessons as lesson, i}
-									<li>
-										<a
-											href="/lesson?id={lesson.id}"
-											data-sveltekit-preload-data="hover"
-											class="recent-item"
-											style="border-inline-start-color: {SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length]}"
-											aria-label="צפה בשיעור: {lesson.topic_title}"
-										>
-											<div class="recent-meta">
-												<span class="domain">{lesson.domain}</span>
-												<div class="meta-end">
-													{#if lesson.enjoyment}
-														<span class="rating">{lesson.enjoyment}/5</span>
-													{/if}
-													<span class="date">{formatDate(lesson.created_at)}</span>
+						<div class="recent-scroll">
+							{#if recentLessons.length === 0}
+								<div class="recent-empty">
+									<svg viewBox="0 0 24 24" fill="var(--mint)" aria-hidden="true">
+										<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
+									</svg>
+									<p>עדיין לא למדת — התחל שיעור ראשון!</p>
+								</div>
+							{:else}
+								<ul class="recent-list">
+									{#each recentLessons as lesson, i}
+										<li>
+											<a
+												href="/lesson?id={lesson.id}"
+												data-sveltekit-preload-data="hover"
+												class="recent-item"
+												style="border-inline-start-color: {SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length]}"
+												aria-label="צפה בשיעור: {lesson.topic_title}"
+											>
+												<div class="recent-meta">
+													<span class="domain">{lesson.domain}</span>
+													<div class="meta-end">
+														{#if lesson.enjoyment}
+															<span class="rating">{lesson.enjoyment}/5</span>
+														{/if}
+														<span class="date">{formatDate(lesson.created_at)}</span>
+													</div>
 												</div>
-											</div>
-											<h3>{lesson.topic_title}</h3>
-											{#if lesson.segmentPreview}
-												<p class="preview">{lesson.segmentPreview}</p>
-											{/if}
-										</a>
-									</li>
-								{/each}
-							</ul>
-						{/if}
+												<h3>{lesson.topic_title}</h3>
+												{#if lesson.segmentPreview}
+													<p class="preview">{lesson.segmentPreview}</p>
+												{/if}
+											</a>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</div>
 					</AccentCard>
 				</aside>
 			</div>
@@ -348,6 +355,25 @@
 		display: flex;
 		justify-content: start;
 		margin: -0.5rem 0 0.65rem;
+		flex-shrink: 0;
+	}
+
+	.recent-scroll {
+		flex: 1;
+		min-height: 0;
+		max-height: min(50dvh, 420px);
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scrollbar-gutter: stable;
+	}
+
+	.recent-scroll::-webkit-scrollbar {
+		width: 6px;
+	}
+
+	.recent-scroll::-webkit-scrollbar-thumb {
+		background: color-mix(in srgb, var(--yellow) 70%, var(--text-muted));
+		border-radius: var(--radius-pill);
 	}
 
 	.recent-list {
@@ -480,7 +506,7 @@
 			display: grid;
 			grid-template-columns: 1fr min(520px, 38%);
 			gap: 1.5rem;
-			align-items: start;
+			align-items: stretch;
 		}
 
 		.welcome-wrap {
@@ -490,6 +516,19 @@
 		.home-right {
 			position: sticky;
 			top: 1.5rem;
+			display: flex;
+			flex-direction: column;
+			min-height: 0;
+			max-height: calc(100dvh - 5rem);
+		}
+
+		.home-right :global(.accent-card) {
+			flex: 1;
+			min-height: 0;
+		}
+
+		.recent-scroll {
+			max-height: none;
 		}
 	}
 </style>

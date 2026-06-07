@@ -1,7 +1,14 @@
 <script lang="ts">
+	import { navigating } from '$app/state';
 	import favicon from '$lib/assets/favicon.svg';
+	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 
 	let { children } = $props();
+
+	const showNavLoading = $derived(
+		navigating.to !== null &&
+			navigating.from?.url.pathname !== navigating.to?.url.pathname
+	);
 </script>
 
 <svelte:head>
@@ -17,6 +24,10 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 </svelte:head>
+
+{#if showNavLoading}
+	<LoadingScreen />
+{/if}
 
 {@render children()}
 

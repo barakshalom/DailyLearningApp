@@ -7,16 +7,24 @@
 		title?: string;
 		accent?: Accent;
 		fill?: boolean;
+		scrollable?: boolean;
 		titleIcon?: Snippet;
 		children: Snippet;
 	}
 
-	let { title = '', accent = 'mint', fill = false, titleIcon, children }: Props = $props();
+	let {
+		title = '',
+		accent = 'mint',
+		fill = false,
+		scrollable = false,
+		titleIcon,
+		children
+	}: Props = $props();
 
 	const accentVar = $derived(`var(--${accent})`);
 </script>
 
-<section class="accent-card" class:fill style="--accent-color: {accentVar}">
+<section class="accent-card" class:fill class:scrollable style="--accent-color: {accentVar}">
 	<div class="accent-strip"></div>
 	<svg class="corner-star" viewBox="0 0 24 24" fill="var(--yellow)" aria-hidden="true">
 		<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
@@ -51,6 +59,21 @@
 
 	.accent-card.fill {
 		height: 100%;
+	}
+
+	.accent-card.scrollable {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		overflow: hidden;
+	}
+
+	.accent-card.scrollable .card-body {
+		flex: 1;
+		min-height: 0;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
 	}
 
 	.accent-strip {

@@ -5,6 +5,7 @@
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
 	import AccentCard from '$lib/components/AccentCard.svelte';
+	import LoadingScreen from '$lib/components/LoadingScreen.svelte';
 
 	let age = $state('');
 	let newUsername = $state('');
@@ -168,7 +169,7 @@
 			<AppHeader variant="sub" title="הגדרות" wide />
 
 			{#if loading}
-				<p class="status">טוען...</p>
+				<LoadingScreen message="טוען הגדרות..." fullscreen={false} />
 			{:else}
 				{#if setupRequired}
 					<div class="setup-banner">
@@ -448,7 +449,6 @@
 		cursor: not-allowed;
 	}
 
-	.status,
 	.error,
 	.success {
 		text-align: center;
