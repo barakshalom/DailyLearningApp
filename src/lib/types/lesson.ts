@@ -13,6 +13,7 @@ export interface Lesson {
 	feedback: Feedback;
 	enjoyment: number | null;
 	requested_topic?: string;
+	custom_topic_request?: string | null;
 	created_at: string;
 }
 
@@ -26,6 +27,7 @@ export interface LessonPayload {
 	feedback: Feedback;
 	enjoyment: number | null;
 	requestedTopic: TopicKey;
+	customTopicRequest?: string | null;
 }
 
 export interface UserPreferences {
@@ -35,4 +37,5 @@ export interface UserPreferences {
 	dislikedDomains: string[];
 	age: number | null;
 	preferredTopic: TopicKey;
+	customTopic?: string | null;
 }

@@ -9,7 +9,7 @@
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
 	import { feedbackFromEnjoyment } from '$lib/feedback';
-	import { getSelectedTopic, setSelectedTopic } from '$lib/selected-topic';
+	import { getCustomTopic, getSelectedTopic, setCustomTopic, setSelectedTopic } from '$lib/selected-topic';
 	import type { LessonPayload } from '$lib/types/lesson';
 	import type { TopicKey } from '$lib/topics';
 
@@ -19,8 +19,17 @@
 	let savingFeedback = $state(false);
 	let errorMsg = $state('');
 	let feedbackVisible = $state(false);
+	let openedById = $state(false);
 
 	const feedbackComplete = $derived(lesson !== null && lesson.enjoyment !== null);
+	const reviewMode = $derived(openedById && feedbackComplete);
+	const feedbackPrompt = $derived(
+		openedById && lesson?.enjoyment !== null
+			? 'שנה את הדירוג'
+			: lesson?.enjoyment !== null
+				? 'הדירוג שלך'
+				: 'כמה נהנית מהשיעור?'
+	);
 
 	async function handleUnauthorized(res: Response) {
 		if (isUnauthorized(res)) {
@@ -40,18 +49,39 @@
 		return data.lesson as LessonPayload | null;
 	}
 
-	async function generateLesson(topic?: TopicKey) {
+	async function loadLessonById(lessonId: string) {
+		const res = await fetch(`/api/lesson/${lessonId}`);
+		if (!res.ok) {
+			if (await handleUnauthorized(res)) return null;
+			if (res.status === 404) {
+				throw new Error('השיעור לא נמצא');
+			}
+			throw new Error(await parseApiError(res, 'שגיאה בטעינת השיעור'));
+		}
+		const data = await res.json();
+		return data.lesson as LessonPayload;
+	}
+
+	async function generateLesson(topic?: TopicKey, customTopic?: string | null) {
 		generating = true;
 		errorMsg = '';
 		feedbackVisible = false;
+		openedById = false;
 
 		const selectedTopic = topic ?? lesson?.requestedTopic ?? getSelectedTopic();
+		const body: Record<string, string> = { topic: selectedTopic };
+
+		if (selectedTopic === 'custom') {
+			const text =
+				customTopic?.trim() ?? lesson?.customTopicRequest?.trim() ?? getCustomTopic().trim();
+			body.customTopic = text;
+		}
 
 		try {
 			const res = await fetch('/api/lesson', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ topic: selectedTopic })
+				body: JSON.stringify(body)
 			});
 			if (!res.ok) {
 				if (await handleUnauthorized(res)) return;
@@ -60,6 +90,9 @@
 			const data = await res.json();
 			lesson = data.lesson;
 			setSelectedTopic(data.lesson.requestedTopic);
+			if (data.lesson.requestedTopic === 'custom' && data.lesson.customTopicRequest) {
+				setCustomTopic(data.lesson.customTopicRequest);
+			}
 			setTimeout(() => {
 				feedbackVisible = true;
 			}, 3000);
@@ -74,12 +107,26 @@
 	async function init() {
 		loading = true;
 		errorMsg = '';
+		openedById = false;
 
+		// start=1 takes precedence over ?id=
 		const startNew = page.url.searchParams.get('start') === '1';
+		const lessonId = startNew ? null : page.url.searchParams.get('id');
 
 		try {
 			if (startNew) {
-				await generateLesson(getSelectedTopic());
+				const topic = getSelectedTopic();
+				await generateLesson(topic, topic === 'custom' ? getCustomTopic() : null);
+				return;
+			}
+
+			if (lessonId) {
+				const loaded = await loadLessonById(lessonId);
+				if (!loaded) return;
+				lesson = loaded;
+				openedById = true;
+				feedbackVisible = true;
+				loading = false;
 				return;
 			}
 
@@ -125,6 +172,7 @@
 
 	function handleEnjoyment(score: number) {
 		if (!lesson || savingFeedback) return;
+		if (!openedById && lesson.enjoyment !== null) return;
 		lesson = {
 			...lesson,
 			enjoyment: score,
@@ -135,11 +183,15 @@
 
 	function handleContinue() {
 		if (!lesson || !feedbackComplete || generating) return;
-		generateLesson(lesson.requestedTopic);
+		generateLesson(lesson.requestedTopic, lesson.customTopicRequest);
 	}
 
 	function handleHome() {
 		goto('/');
+	}
+
+	function handleHistory() {
+		goto('/history');
 	}
 
 	onMount(() => {
@@ -148,7 +200,11 @@
 </script>
 
 <div class="page">
-	<AppHeader />
+	{#if openedById && lesson}
+		<AppHeader variant="sub" title={lesson.topicTitle} backHref="/history" backLabel="← היסטוריה" />
+	{:else}
+		<AppHeader />
+	{/if}
 
 	{#if errorMsg}
 		<div class="error-banner">
@@ -174,16 +230,20 @@
 				<div class="lesson-end">
 					<FeedbackBar
 						enjoyment={lesson.enjoyment}
+						disabled={!openedById && lesson.enjoyment !== null}
 						saving={savingFeedback}
 						embedded
+						prompt={feedbackPrompt}
 						onEnjoyment={handleEnjoyment}
 					/>
 
 					<LessonEndActions
+						mode={reviewMode ? 'review' : 'active'}
 						disabled={!feedbackComplete}
 						loading={generating}
 						onContinue={handleContinue}
 						onHome={handleHome}
+						onHistory={handleHistory}
 					/>
 				</div>
 			{/if}

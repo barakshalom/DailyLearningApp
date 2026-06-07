@@ -4,6 +4,7 @@
 		disabled?: boolean;
 		saving?: boolean;
 		embedded?: boolean;
+		prompt?: string;
 		onEnjoyment: (score: number) => void;
 	}
 
@@ -12,12 +13,13 @@
 		disabled = false,
 		saving = false,
 		embedded = false,
+		prompt = 'כמה נהנית מהשיעור?',
 		onEnjoyment
 	}: Props = $props();
 </script>
 
 <div class="feedback-bar" class:disabled class:embedded>
-	<p class="prompt">כמה נהנית מהשיעור? {saving ? '(שומר...)' : ''}</p>
+	<p class="prompt">{prompt} {saving ? '(שומר...)' : ''}</p>
 
 	<div class="dots" role="group" aria-label="דירוג הנאה">
 		{#each [1, 2, 3, 4, 5] as score}

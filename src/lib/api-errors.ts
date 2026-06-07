@@ -21,6 +21,9 @@ function mapMessage(message: string): string {
 	if (message.includes('requested_topic')) {
 		return 'חסרה עמודת requested_topic — הרץ את supabase/add_requested_topic.sql בעורך SQL';
 	}
+	if (message.includes('custom_topic_request')) {
+		return 'חסרה עמודת custom_topic_request — הרץ את supabase/add_custom_topic_request.sql בעורך SQL';
+	}
 	if (isMissingProfilesMessage(message)) {
 		return 'חסרה טבלת profiles — הרץ את supabase/add_profiles.sql בעורך SQL';
 	}

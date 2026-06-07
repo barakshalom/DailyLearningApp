@@ -40,7 +40,11 @@ export function buildLessonPrompt(prefs: UserPreferences): string {
 		parts.push(buildAgePrompt(prefs.age));
 	}
 
-	if (prefs.preferredTopic !== 'random') {
+	if (prefs.preferredTopic === 'custom' && prefs.customTopic) {
+		parts.push(
+			`\nבחר נושא חדש בדיוק על: "${prefs.customTopic}". שורת DOMAIN יכולה לתאר את התחום הרלוונטי.`
+		);
+	} else if (prefs.preferredTopic !== 'random') {
 		const label = getTopicLabel(prefs.preferredTopic);
 		parts.push(
 			`\nבחר נושא חדש מתחום "${label}" בלבד. שורת DOMAIN חייבת להיות "${label}".`

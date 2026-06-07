@@ -11,6 +11,7 @@ export type LessonRow = {
 	image_url: string | null;
 	youtube_query?: string | null;
 	requested_topic?: string | null;
+	custom_topic_request?: string | null;
 	feedback: string | null;
 	enjoyment: number | null;
 };
@@ -30,11 +31,14 @@ export function toLessonPayload(row: LessonRow): LessonPayload {
 		youtubeQuery: row.youtube_query ?? null,
 		feedback: row.feedback as LessonPayload['feedback'],
 		enjoyment: row.enjoyment,
-		requestedTopic
+		requestedTopic,
+		customTopicRequest: row.custom_topic_request ?? null
 	};
 }
 
 export const SELECT_WITH_ALL =
+	'id, topic_title, domain, segments, image_url, youtube_query, requested_topic, custom_topic_request, feedback, enjoyment';
+export const SELECT_WITHOUT_CUSTOM_TOPIC =
 	'id, topic_title, domain, segments, image_url, youtube_query, requested_topic, feedback, enjoyment';
 export const SELECT_WITHOUT_YOUTUBE =
 	'id, topic_title, domain, segments, image_url, requested_topic, feedback, enjoyment';
@@ -45,6 +49,7 @@ export const SELECT_MINIMAL =
 
 const SELECT_ATTEMPTS = [
 	SELECT_WITH_ALL,
+	SELECT_WITHOUT_CUSTOM_TOPIC,
 	SELECT_WITHOUT_YOUTUBE,
 	SELECT_WITHOUT_REQUESTED_TOPIC,
 	SELECT_MINIMAL
@@ -58,8 +63,16 @@ export function isMissingRequestedTopicColumn(message: string): boolean {
 	return message.toLowerCase().includes('requested_topic');
 }
 
+export function isMissingCustomTopicRequestColumn(message: string): boolean {
+	return message.toLowerCase().includes('custom_topic_request');
+}
+
 function isRetryableColumnError(message: string): boolean {
-	return isMissingYoutubeColumn(message) || isMissingRequestedTopicColumn(message);
+	return (
+		isMissingYoutubeColumn(message) ||
+		isMissingRequestedTopicColumn(message) ||
+		isMissingCustomTopicRequestColumn(message)
+	);
 }
 
 function buildInsertPayload(
@@ -69,6 +82,7 @@ function buildInsertPayload(
 	const payload = { ...insertBase };
 	if (!select.includes('youtube_query')) delete payload.youtube_query;
 	if (!select.includes('requested_topic')) delete payload.requested_topic;
+	if (!select.includes('custom_topic_request')) delete payload.custom_topic_request;
 	return payload;
 }
 
@@ -80,6 +94,30 @@ export async function selectLatestLesson(supabase: SupabaseClient, userId: strin
 			.eq('user_id', userId)
 			.order('created_at', { ascending: false })
 			.limit(1)
+			.maybeSingle();
+
+		if (!result.error) {
+			return result.data as unknown as LessonRow | null;
+		}
+		if (!isRetryableColumnError(result.error.message)) {
+			throw toError(result.error, 'שגיאה בטעינת שיעור');
+		}
+	}
+
+	return null;
+}
+
+export async function selectLessonById(
+	supabase: SupabaseClient,
+	userId: string,
+	lessonId: string
+): Promise<LessonRow | null> {
+	for (const select of SELECT_ATTEMPTS) {
+		const result = await supabase
+			.from('lessons')
+			.select(select)
+			.eq('id', lessonId)
+			.eq('user_id', userId)
 			.maybeSingle();
 
 		if (!result.error) {

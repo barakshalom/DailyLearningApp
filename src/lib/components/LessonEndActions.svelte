@@ -1,28 +1,48 @@
 <script lang="ts">
 	interface Props {
+		mode?: 'active' | 'review';
 		disabled?: boolean;
 		loading?: boolean;
 		onContinue: () => void;
 		onHome: () => void;
+		onHistory?: () => void;
 	}
 
-	let { disabled = false, loading = false, onContinue, onHome }: Props = $props();
+	let {
+		mode = 'active',
+		disabled = false,
+		loading = false,
+		onContinue,
+		onHome,
+		onHistory
+	}: Props = $props();
 </script>
 
 <div class="lesson-end-actions">
-	<button
-		type="button"
-		class="cta primary"
-		{disabled}
-		onclick={disabled || loading ? undefined : onContinue}
-	>
-		{#if loading}
-			<span class="spinner"></span>
-			מכין שיעור חדש...
-		{:else}
-			המשך באותו נושא
-		{/if}
-	</button>
+	{#if mode === 'active'}
+		<button
+			type="button"
+			class="cta primary"
+			{disabled}
+			onclick={disabled || loading ? undefined : onContinue}
+		>
+			{#if loading}
+				<span class="spinner"></span>
+				מכין שיעור חדש...
+			{:else}
+				המשך באותו נושא
+			{/if}
+		</button>
+	{:else}
+		<button
+			type="button"
+			class="cta primary"
+			disabled={loading}
+			onclick={onHistory}
+		>
+			חזרה להיסטוריה
+		</button>
+	{/if}
 	<button type="button" class="cta secondary" disabled={loading} onclick={onHome}>
 		חזרה לבית
 	</button>

@@ -6,7 +6,8 @@ import { isMissingProfilesError, toError } from '$lib/server/errors';
 export async function loadUserPreferences(
 	supabase: SupabaseClient,
 	userId: string,
-	topic: TopicKey = 'random'
+	topic: TopicKey = 'random',
+	customTopic: string | null = null
 ): Promise<UserPreferences> {
 	const { data: lessons, error: lessonsError } = await supabase
 		.from('lessons')
@@ -69,6 +70,7 @@ export async function loadUserPreferences(
 		likedDomains,
 		dislikedDomains,
 		age,
-		preferredTopic: topic
+		preferredTopic: topic,
+		customTopic: topic === 'custom' ? customTopic : null
 	};
 }

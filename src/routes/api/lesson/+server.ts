@@ -14,6 +14,13 @@ import { canStartNewLesson } from '$lib/server/lesson-limits';
 import { tryPooledLesson } from '$lib/server/lesson-pool';
 import { isValidTopic, type TopicKey } from '$lib/topics';
 
+function normalizeCustomTopic(raw: unknown): string | null {
+	if (typeof raw !== 'string') return null;
+	const trimmed = raw.trim().replace(/\s+/g, ' ');
+	if (trimmed.length < 2 || trimmed.length > 80) return null;
+	return trimmed;
+}
+
 export const GET: RequestHandler = async ({ locals }) => {
 	const user = locals.user;
 	if (!user) error(401, 'Unauthorized');
@@ -48,6 +55,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const topicRaw = body?.topic as string | undefined;
 	const topic: TopicKey = topicRaw && isValidTopic(topicRaw) ? topicRaw : 'random';
 
+	let customTopic: string | null = null;
+	if (topic === 'custom') {
+		customTopic = normalizeCustomTopic(body?.customTopic);
+		if (!customTopic) {
+			error(400, 'יש להזין נושא (2–80 תווים)');
+		}
+	}
+
 	try {
 		const latest = await selectLatestLesson(locals.supabase, user.id);
 		if (latest && latest.enjoyment === null) {
@@ -59,12 +74,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throwDailyLimit();
 		}
 
-		const pooled = await tryPooledLesson(locals.supabase, user.id, topic);
-		if (pooled) {
-			return json({ lesson: toLessonPayload(pooled), fromPool: true });
+		if (topic !== 'custom') {
+			const pooled = await tryPooledLesson(locals.supabase, user.id, topic);
+			if (pooled) {
+				return json({ lesson: toLessonPayload(pooled), fromPool: true });
+			}
 		}
 
-		const prefs = await loadUserPreferences(locals.supabase, user.id, topic);
+		const prefs = await loadUserPreferences(locals.supabase, user.id, topic, customTopic);
 		const parsed = await generateLesson(prefs);
 		const image = await fetchLessonImage(parsed.imageQuery);
 
@@ -75,7 +92,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			segments: parsed.segments,
 			image_url: image?.url ?? null,
 			youtube_query: parsed.youtubeQuery,
-			requested_topic: topic
+			requested_topic: topic,
+			custom_topic_request: topic === 'custom' ? customTopic : null
 		});
 
 		return json({ lesson: toLessonPayload(row) });

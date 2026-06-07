@@ -10,11 +10,17 @@
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
 	import { SEGMENT_ACCENTS } from '$lib/prompts/lesson';
 	import { computeStreak } from '$lib/streak';
-	import { getSelectedTopic, setSelectedTopic } from '$lib/selected-topic';
+	import {
+		getCustomTopic,
+		getSelectedTopic,
+		setCustomTopic,
+		setSelectedTopic
+	} from '$lib/selected-topic';
 	import type { Lesson, LessonPayload } from '$lib/types/lesson';
 	import type { TopicKey } from '$lib/topics';
 
 	let selectedTopic = $state<TopicKey>('random');
+	let customTopicText = $state('');
 	let allLessons = $state<Lesson[]>([]);
 	let recentLessons = $state<Lesson[]>([]);
 	let unfinishedLesson = $state<LessonPayload | null>(null);
@@ -26,9 +32,15 @@
 	let errorMsg = $state('');
 
 	let streak = $derived(computeStreak(allLessons));
+	let customTopicValid = $derived(
+		selectedTopic !== 'custom' || customTopicText.trim().length >= 2
+	);
 
 	onMount(async () => {
 		selectedTopic = getSelectedTopic();
+		if (selectedTopic === 'custom') {
+			customTopicText = getCustomTopic();
+		}
 
 		try {
 			const [historyRes, lessonRes] = await Promise.all([
@@ -70,8 +82,17 @@
 		setSelectedTopic(topic);
 	}
 
+	function handleCustomTextChange(text: string) {
+		customTopicText = text;
+		setCustomTopic(text);
+	}
+
 	async function startLesson() {
+		if (!customTopicValid) return;
 		setSelectedTopic(selectedTopic);
+		if (selectedTopic === 'custom') {
+			setCustomTopic(customTopicText.trim());
+		}
 		starting = true;
 		await goto('/lesson?start=1');
 	}
@@ -112,7 +133,12 @@
 
 				<div class="home-left">
 					<AccentCard title="מה תרצה ללמוד?" accent="lavender">
-						<TopicPicker value={selectedTopic} onchange={handleTopicChange} />
+						<TopicPicker
+							value={selectedTopic}
+							customText={customTopicText}
+							onchange={handleTopicChange}
+							onCustomTextChange={handleCustomTextChange}
+						/>
 					</AccentCard>
 
 					{#if unfinishedLesson}
@@ -128,17 +154,23 @@
 					<button
 						type="button"
 						class="start-btn"
-						disabled={starting || !canStartNew}
+						disabled={starting || !canStartNew || !customTopicValid}
 						onclick={startLesson}
 					>
 						{#if starting}
 							טוען...
 						{:else if !canStartNew && blockReason}
 							{blockReason}
+						{:else if selectedTopic === 'custom' && !customTopicValid}
+							הזן נושא ללמידה
 						{:else}
 							התחל שיעור
 						{/if}
 					</button>
+
+					{#if selectedTopic === 'custom' && !customTopicValid && canStartNew}
+						<p class="limit-hint">כתוב על מה תרצה ללמוד (לפחות 2 תווים)</p>
+					{/if}
 
 					{#if blockReason && !canStartNew && !unfinishedLesson}
 						<p class="limit-hint">{blockReason}</p>
@@ -169,23 +201,27 @@
 						{:else}
 							<ul class="recent-list">
 								{#each recentLessons as lesson, i}
-									<li
-										class="recent-item"
-										style="border-inline-start-color: {SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length]}"
-									>
-										<div class="recent-meta">
-											<span class="domain">{lesson.domain}</span>
-											<div class="meta-end">
-												{#if lesson.enjoyment}
-													<span class="rating">{lesson.enjoyment}/5</span>
-												{/if}
-												<span class="date">{formatDate(lesson.created_at)}</span>
+									<li>
+										<a
+											href="/lesson?id={lesson.id}"
+											class="recent-item"
+											style="border-inline-start-color: {SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length]}"
+											aria-label="צפה בשיעור: {lesson.topic_title}"
+										>
+											<div class="recent-meta">
+												<span class="domain">{lesson.domain}</span>
+												<div class="meta-end">
+													{#if lesson.enjoyment}
+														<span class="rating">{lesson.enjoyment}/5</span>
+													{/if}
+													<span class="date">{formatDate(lesson.created_at)}</span>
+												</div>
 											</div>
-										</div>
-										<h3>{lesson.topic_title}</h3>
-										{#if lesson.segments?.[0]}
-											<p class="preview">{lesson.segments[0]}</p>
-										{/if}
+											<h3>{lesson.topic_title}</h3>
+											{#if lesson.segments?.[0]}
+												<p class="preview">{lesson.segments[0]}</p>
+											{/if}
+										</a>
 									</li>
 								{/each}
 							</ul>
@@ -356,11 +392,24 @@
 	}
 
 	.recent-item {
+		display: block;
+		text-decoration: none;
+		color: inherit;
 		background: var(--bg);
 		border-radius: var(--radius-lg);
 		padding: 1rem 1.15rem;
 		box-shadow: 0 2px 8px var(--shadow);
 		border-inline-start: 3px solid var(--mint);
+		cursor: pointer;
+		transition: transform 0.15s, box-shadow 0.15s;
+	}
+
+	.recent-item:hover,
+	.recent-item:focus-visible {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 18px var(--shadow);
+		outline: 2px solid var(--mint);
+		outline-offset: 2px;
 	}
 
 	.recent-meta {

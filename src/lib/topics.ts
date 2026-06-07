@@ -11,6 +11,8 @@ export const PRIMARY_TOPICS = [
 	{ key: 'personal-growth', label: 'התפתחות אישית' }
 ] as const;
 
+export const CUSTOM_TOPIC = { key: 'custom', label: 'נושא אחר' } as const;
+
 export const MORE_TOPICS = [
 	{ key: 'mathematics', label: 'מתמטיקה' },
 	{ key: 'chemistry', label: 'כימיה' },
@@ -26,7 +28,7 @@ export const MORE_TOPICS = [
 	{ key: 'cinema', label: 'קולנוע' }
 ] as const;
 
-export const TOPIC_OPTIONS = [...PRIMARY_TOPICS, ...MORE_TOPICS] as const;
+export const TOPIC_OPTIONS = [...PRIMARY_TOPICS, ...MORE_TOPICS, CUSTOM_TOPIC] as const;
 
 export type TopicKey = (typeof TOPIC_OPTIONS)[number]['key'];
 

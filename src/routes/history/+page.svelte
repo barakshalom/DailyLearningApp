@@ -60,23 +60,27 @@
 			{:else}
 				<ul class="lesson-list">
 					{#each lessons as lesson, i}
-						<li
-							class="lesson-item"
-							style="border-inline-start-color: {SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length]}"
-						>
-							<div class="lesson-meta">
-								<span class="domain">{lesson.domain}</span>
-								<div class="meta-end">
-									{#if lesson.enjoyment}
-										<span class="rating">{lesson.enjoyment}/5</span>
-									{/if}
-									<span class="date">{formatDate(lesson.created_at)}</span>
+						<li>
+							<a
+								href="/lesson?id={lesson.id}"
+								class="lesson-item"
+								style="border-inline-start-color: {SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length]}"
+								aria-label="צפה בשיעור: {lesson.topic_title}"
+							>
+								<div class="lesson-meta">
+									<span class="domain">{lesson.domain}</span>
+									<div class="meta-end">
+										{#if lesson.enjoyment}
+											<span class="rating">{lesson.enjoyment}/5</span>
+										{/if}
+										<span class="date">{formatDate(lesson.created_at)}</span>
+									</div>
 								</div>
-							</div>
-							<h2>{lesson.topic_title}</h2>
-							{#if lesson.segments?.[0]}
-								<p class="preview">{lesson.segments[0]}</p>
-							{/if}
+								<h2>{lesson.topic_title}</h2>
+								{#if lesson.segments?.[0]}
+									<p class="preview">{lesson.segments[0]}</p>
+								{/if}
+							</a>
 						</li>
 					{/each}
 				</ul>
@@ -149,11 +153,24 @@
 	}
 
 	.lesson-item {
+		display: block;
+		text-decoration: none;
+		color: inherit;
 		background: var(--bg);
 		border-radius: var(--radius-lg);
 		padding: 1rem 1.15rem;
 		box-shadow: 0 2px 8px var(--shadow);
 		border-inline-start: 3px solid var(--mint);
+		cursor: pointer;
+		transition: transform 0.15s, box-shadow 0.15s;
+	}
+
+	.lesson-item:hover,
+	.lesson-item:focus-visible {
+		transform: translateY(-2px);
+		box-shadow: 0 6px 18px var(--shadow);
+		outline: 2px solid var(--mint);
+		outline-offset: 2px;
 	}
 
 	.lesson-meta {
