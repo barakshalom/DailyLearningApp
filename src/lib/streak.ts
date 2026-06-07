@@ -1,4 +1,7 @@
-import type { Lesson } from '$lib/types/lesson';
+export type StreakLesson = {
+	created_at: string;
+	enjoyment: number | null;
+};
 
 export interface StreakState {
 	count: number;
@@ -18,7 +21,7 @@ function addDays(date: Date, days: number): Date {
 }
 
 /** Days with at least one finished (rated) lesson. */
-function completedDayKeys(lessons: Lesson[]): Set<string> {
+function completedDayKeys(lessons: StreakLesson[]): Set<string> {
 	const keys = new Set<string>();
 	for (const lesson of lessons) {
 		if (lesson.enjoyment !== null) {
@@ -38,7 +41,7 @@ function countConsecutiveFrom(anchorKey: string, days: Set<string>): number {
 	return count;
 }
 
-export function computeStreak(lessons: Lesson[]): StreakState {
+export function computeStreak(lessons: StreakLesson[]): StreakState {
 	const completedDays = completedDayKeys(lessons);
 	const todayKey = toDateKey(new Date());
 	const yesterdayKey = toDateKey(addDays(new Date(), -1));

@@ -2,6 +2,15 @@ import type { TopicKey } from '$lib/topics';
 
 export type Feedback = 'liked' | 'disliked' | null;
 
+export interface LessonSummary {
+	id: string;
+	topic_title: string;
+	domain: string;
+	created_at: string;
+	enjoyment: number | null;
+	segmentPreview: string | null;
+}
+
 export interface Lesson {
 	id: string;
 	user_id: string;

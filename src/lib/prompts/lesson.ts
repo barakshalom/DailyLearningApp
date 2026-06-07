@@ -83,17 +83,6 @@ export interface ParsedLesson {
 	segments: string[];
 }
 
-export const SEGMENT_ACCENTS = [
-	'var(--mint)',
-	'var(--lavender)',
-	'var(--yellow)',
-	'var(--pink)',
-	'var(--mint)',
-	'var(--lavender)',
-	'var(--yellow)',
-	'var(--pink)'
-] as const;
-
 export function parseLessonResponse(raw: string): ParsedLesson {
 	let text = raw.trim();
 	let topicTitle = 'נושא חדש';
@@ -137,13 +126,3 @@ export function parseLessonResponse(raw: string): ParsedLesson {
 	return { topicTitle, domain, imageQuery, youtubeQuery, segments };
 }
 
-export const SEGMENT_LABELS = [
-	'סקרנות',
-	'למה זה חשוב',
-	'ההסבר',
-	'עומק',
-	'דוגמה מהחיים',
-	'שלוש נקודות מפתח',
-	'שאלה לחשיבה',
-	'למידה נוספת'
-] as const;

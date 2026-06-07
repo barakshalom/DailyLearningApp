@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { isUnauthorized, parseApiError } from '$lib/api-errors';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
 	import WelcomeHero from '$lib/components/WelcomeHero.svelte';
 	import AccentCard from '$lib/components/AccentCard.svelte';
 	import TopicPicker from '$lib/components/TopicPicker.svelte';
 	import StreakBadge from '$lib/components/StreakBadge.svelte';
-	import { SEGMENT_ACCENTS } from '$lib/prompts/lesson';
+	import { SEGMENT_ACCENTS } from '$lib/lesson-ui';
 	import { computeStreak } from '$lib/streak';
 	import {
 		getCustomTopic,
@@ -16,64 +15,33 @@
 		setCustomTopic,
 		setSelectedTopic
 	} from '$lib/selected-topic';
-	import type { Lesson, LessonPayload } from '$lib/types/lesson';
+	import type { PageData } from './$types';
 	import type { TopicKey } from '$lib/topics';
+
+	let { data }: { data: PageData } = $props();
 
 	let selectedTopic = $state<TopicKey>('random');
 	let customTopicText = $state('');
-	let allLessons = $state<Lesson[]>([]);
-	let recentLessons = $state<Lesson[]>([]);
-	let unfinishedLesson = $state<LessonPayload | null>(null);
-	let canStartNew = $state(true);
-	let blockReason = $state<string | null>(null);
-	let totalLessons = $state(0);
-	let loading = $state(true);
 	let starting = $state(false);
 	let errorMsg = $state('');
 
-	let streak = $derived(computeStreak(allLessons));
-	let customTopicValid = $derived(
+	const allLessons = $derived(data.lessons);
+	const recentLessons = $derived(data.lessons.slice(0, 6));
+	const totalLessons = $derived(data.lessons.length);
+	const streak = $derived(computeStreak(data.lessons));
+	const canStartNew = $derived(data.lessonStatus.canStartNew);
+	const blockReason = $derived(data.lessonStatus.blockReason);
+	const unfinishedLesson = $derived(
+		data.lessonStatus.lesson?.enjoyment === null ? data.lessonStatus.lesson : null
+	);
+	const customTopicValid = $derived(
 		selectedTopic !== 'custom' || customTopicText.trim().length >= 2
 	);
 
-	onMount(async () => {
+	onMount(() => {
 		selectedTopic = getSelectedTopic();
 		if (selectedTopic === 'custom') {
 			customTopicText = getCustomTopic();
-		}
-
-		try {
-			const [historyRes, lessonRes] = await Promise.all([
-				fetch('/api/history'),
-				fetch('/api/lesson')
-			]);
-
-			if (!historyRes.ok) {
-				if (isUnauthorized(historyRes)) {
-					await goto('/login');
-					return;
-				}
-				throw new Error(await parseApiError(historyRes, 'שגיאה בטעינת ההיסטוריה'));
-			}
-
-			const historyData = await historyRes.json();
-			allLessons = historyData.lessons as Lesson[];
-			totalLessons = allLessons.length;
-			recentLessons = allLessons.slice(0, 6);
-
-			if (lessonRes.ok) {
-				const lessonData = await lessonRes.json();
-				const latest = lessonData.lesson as LessonPayload | null;
-				canStartNew = lessonData.canStartNew !== false;
-				blockReason = (lessonData.blockReason as string | null) ?? null;
-				if (latest && latest.enjoyment === null) {
-					unfinishedLesson = latest;
-				}
-			}
-		} catch (e) {
-			errorMsg = e instanceof Error ? e.message : 'שגיאה בטעינה';
-		} finally {
-			loading = false;
 		}
 	});
 
@@ -115,7 +83,7 @@
 			<div class="home-grid">
 				<div class="welcome-wrap">
 					<WelcomeHero logoSize="lg">
-						{#if !loading && (totalLessons > 0 || streak.count > 0)}
+						{#if totalLessons > 0 || streak.count > 0}
 							<div class="stat-tile mint">
 								<span class="stat-value">{totalLessons}</span>
 								<span class="stat-label">שיעורים</span>
@@ -147,7 +115,7 @@
 								<span class="resume-label">שיעור פתוח</span>
 								<span class="resume-topic">{unfinishedLesson.topicTitle}</span>
 							</div>
-							<a href="/lesson" class="resume-link">המשך שיעור</a>
+							<a href="/lesson" class="resume-link" data-sveltekit-preload-data="hover">המשך שיעור</a>
 						</div>
 					{/if}
 
@@ -155,6 +123,7 @@
 						type="button"
 						class="start-btn"
 						disabled={starting || !canStartNew || !customTopicValid}
+						data-sveltekit-preload-code="hover"
 						onclick={startLesson}
 					>
 						{#if starting}
@@ -185,13 +154,11 @@
 					<AccentCard title="למדת לאחרונה" accent="yellow" fill>
 						{#if recentLessons.length > 0}
 							<div class="recent-header">
-								<a href="/history" class="nav-pill">הכל</a>
+								<a href="/history" class="nav-pill" data-sveltekit-preload-data="hover">הכל</a>
 							</div>
 						{/if}
 
-						{#if loading}
-							<p class="recent-status">טוען...</p>
-						{:else if recentLessons.length === 0}
+						{#if recentLessons.length === 0}
 							<div class="recent-empty">
 								<svg viewBox="0 0 24 24" fill="var(--mint)" aria-hidden="true">
 									<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
@@ -204,6 +171,7 @@
 									<li>
 										<a
 											href="/lesson?id={lesson.id}"
+											data-sveltekit-preload-data="hover"
 											class="recent-item"
 											style="border-inline-start-color: {SEGMENT_ACCENTS[i % SEGMENT_ACCENTS.length]}"
 											aria-label="צפה בשיעור: {lesson.topic_title}"
@@ -218,8 +186,8 @@
 												</div>
 											</div>
 											<h3>{lesson.topic_title}</h3>
-											{#if lesson.segments?.[0]}
-												<p class="preview">{lesson.segments[0]}</p>
+											{#if lesson.segmentPreview}
+												<p class="preview">{lesson.segmentPreview}</p>
 											{/if}
 										</a>
 									</li>
@@ -467,14 +435,6 @@
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
 		overflow: hidden;
-	}
-
-	.recent-status {
-		margin: 0;
-		font-size: 0.9rem;
-		color: var(--text-muted);
-		text-align: center;
-		padding: 1rem 0;
 	}
 
 	.recent-empty {

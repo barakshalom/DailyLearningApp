@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { isUnauthorized, parseApiError } from '$lib/api-errors';
@@ -20,6 +20,10 @@
 	let errorMsg = $state('');
 	let feedbackVisible = $state(false);
 	let openedById = $state(false);
+	let feedbackSentinel = $state<HTMLElement | null>(null);
+
+	let feedbackObserver: IntersectionObserver | null = null;
+	let feedbackFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const feedbackComplete = $derived(lesson !== null && lesson.enjoyment !== null);
 	const reviewMode = $derived(openedById && feedbackComplete);
@@ -30,6 +34,42 @@
 				? 'הדירוג שלך'
 				: 'כמה נהנית מהשיעור?'
 	);
+
+	function clearFeedbackReveal() {
+		if (feedbackFallbackTimer) {
+			clearTimeout(feedbackFallbackTimer);
+			feedbackFallbackTimer = null;
+		}
+		if (feedbackObserver) {
+			feedbackObserver.disconnect();
+			feedbackObserver = null;
+		}
+	}
+
+	async function setupFeedbackReveal() {
+		clearFeedbackReveal();
+		feedbackVisible = false;
+		await tick();
+
+		feedbackFallbackTimer = setTimeout(() => {
+			feedbackVisible = true;
+		}, 800);
+
+		if (!feedbackSentinel || typeof IntersectionObserver === 'undefined') {
+			return;
+		}
+
+		feedbackObserver = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					feedbackVisible = true;
+					clearFeedbackReveal();
+				}
+			},
+			{ rootMargin: '200px' }
+		);
+		feedbackObserver.observe(feedbackSentinel);
+	}
 
 	async function handleUnauthorized(res: Response) {
 		if (isUnauthorized(res)) {
@@ -62,11 +102,27 @@
 		return data.lesson as LessonPayload;
 	}
 
+	async function loadLessonHeroImage(imageQuery: string) {
+		if (!lesson) return;
+
+		try {
+			const res = await fetch(`/api/lesson-image?query=${encodeURIComponent(imageQuery)}`);
+			if (!res.ok) return;
+			const data = await res.json();
+			if (data.image?.url && lesson) {
+				lesson = { ...lesson, imageUrl: data.image.url };
+			}
+		} catch {
+			// Image is optional — lesson text is already visible
+		}
+	}
+
 	async function generateLesson(topic?: TopicKey, customTopic?: string | null) {
 		generating = true;
 		errorMsg = '';
 		feedbackVisible = false;
 		openedById = false;
+		clearFeedbackReveal();
 
 		const selectedTopic = topic ?? lesson?.requestedTopic ?? getSelectedTopic();
 		const body: Record<string, string> = { topic: selectedTopic };
@@ -93,9 +149,10 @@
 			if (data.lesson.requestedTopic === 'custom' && data.lesson.customTopicRequest) {
 				setCustomTopic(data.lesson.customTopicRequest);
 			}
-			setTimeout(() => {
-				feedbackVisible = true;
-			}, 3000);
+			if (data.imageQuery) {
+				void loadLessonHeroImage(data.imageQuery);
+			}
+			await setupFeedbackReveal();
 		} catch (e) {
 			errorMsg = e instanceof Error ? e.message : 'שגיאה ביצירת שיעור';
 		} finally {
@@ -108,8 +165,8 @@
 		loading = true;
 		errorMsg = '';
 		openedById = false;
+		clearFeedbackReveal();
 
-		// start=1 takes precedence over ?id=
 		const startNew = page.url.searchParams.get('start') === '1';
 		const lessonId = startNew ? null : page.url.searchParams.get('id');
 
@@ -197,6 +254,10 @@
 	onMount(() => {
 		init();
 	});
+
+	onDestroy(() => {
+		clearFeedbackReveal();
+	});
 </script>
 
 <div class="page">
@@ -225,6 +286,10 @@
 				youtubeQuery={lesson?.youtubeQuery}
 				loading={loading || generating}
 			/>
+
+			{#if lesson && !loading && !generating}
+				<div bind:this={feedbackSentinel} class="feedback-sentinel" aria-hidden="true"></div>
+			{/if}
 
 			{#if lesson && !loading && !generating && feedbackVisible}
 				<div class="lesson-end">
@@ -266,6 +331,11 @@
 		width: 100%;
 		max-width: 1400px;
 		margin: 0 auto;
+	}
+
+	.feedback-sentinel {
+		height: 1px;
+		width: 100%;
 	}
 
 	.lesson-end {

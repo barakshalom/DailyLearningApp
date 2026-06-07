@@ -2,6 +2,12 @@ import type { Session, SupabaseClient, User } from '@supabase/supabase-js';
 
 declare global {
 	namespace App {
+		interface Platform {
+			context?: {
+				waitUntil?: (promise: Promise<unknown>) => void;
+			};
+		}
+
 		interface Locals {
 			supabase: SupabaseClient;
 			safeGetSession: () => Promise<{

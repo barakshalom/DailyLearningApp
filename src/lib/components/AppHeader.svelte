@@ -31,8 +31,8 @@
 	{:else}
 		<AppLogo size="md" />
 		<nav class="header-nav">
-			<a href="/settings" class="nav-pill">הגדרות</a>
-			<a href="/history" class="nav-pill">היסטוריה</a>
+			<a href="/settings" class="nav-pill" data-sveltekit-preload-data="hover">הגדרות</a>
+			<a href="/history" class="nav-pill" data-sveltekit-preload-data="hover">היסטוריה</a>
 		</nav>
 	{/if}
 </header>

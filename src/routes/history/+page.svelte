@@ -1,34 +1,12 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { goto } from '$app/navigation';
-	import { isUnauthorized, parseApiError } from '$lib/api-errors';
 	import AppHeader from '$lib/components/AppHeader.svelte';
 	import DecorativeBg from '$lib/components/DecorativeBg.svelte';
-	import { SEGMENT_ACCENTS } from '$lib/prompts/lesson';
-	import type { Lesson } from '$lib/types/lesson';
+	import { SEGMENT_ACCENTS } from '$lib/lesson-ui';
+	import type { PageData } from './$types';
 
-	let lessons = $state<Lesson[]>([]);
-	let loading = $state(true);
-	let errorMsg = $state('');
+	let { data }: { data: PageData } = $props();
 
-	onMount(async () => {
-		try {
-			const res = await fetch('/api/history');
-			if (!res.ok) {
-				if (isUnauthorized(res)) {
-					await goto('/login');
-					return;
-				}
-				throw new Error(await parseApiError(res, 'שגיאה בטעינת ההיסטוריה'));
-			}
-			const data = await res.json();
-			lessons = data.lessons;
-		} catch (e) {
-			errorMsg = e instanceof Error ? e.message : 'שגיאה בטעינה';
-		} finally {
-			loading = false;
-		}
-	});
+	const lessons = $derived(data.lessons);
 
 	function formatDate(iso: string) {
 		return new Date(iso).toLocaleDateString('he-IL', {
@@ -46,11 +24,7 @@
 		<div class="history-content">
 			<AppHeader variant="sub" title="מה למדתי" wide />
 
-			{#if loading}
-				<p class="status">טוען...</p>
-			{:else if errorMsg}
-				<p class="error">{errorMsg}</p>
-			{:else if lessons.length === 0}
+			{#if lessons.length === 0}
 				<div class="history-empty">
 					<svg viewBox="0 0 24 24" fill="var(--mint)" aria-hidden="true">
 						<path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" />
@@ -77,8 +51,8 @@
 									</div>
 								</div>
 								<h2>{lesson.topic_title}</h2>
-								{#if lesson.segments?.[0]}
-									<p class="preview">{lesson.segments[0]}</p>
+								{#if lesson.segmentPreview}
+									<p class="preview">{lesson.segmentPreview}</p>
 								{/if}
 							</a>
 						</li>
@@ -108,18 +82,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
-	}
-
-	.status,
-	.error {
-		text-align: center;
-		color: var(--text-muted);
-		padding: 2rem;
-		font-size: 0.9rem;
-	}
-
-	.error {
-		color: #c62828;
 	}
 
 	.history-empty {

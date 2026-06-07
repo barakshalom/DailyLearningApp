@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { SEGMENT_LABELS, SEGMENT_ACCENTS } from '$lib/prompts/lesson';
+	import { SEGMENT_LABELS, SEGMENT_ACCENTS } from '$lib/lesson-ui';
 	import SegmentIcon from '$lib/components/SegmentIcon.svelte';
 	import { buildYouTubeSearchUrl } from '$lib/youtube';
 
@@ -61,7 +61,15 @@
 					<span class="image-domain">{domain}</span>
 					<div class="image-frame">
 						{#if imageUrl}
-							<img src={imageUrl} alt="" class="lesson-image" />
+							<img
+								src={imageUrl}
+								alt=""
+								class="lesson-image"
+								width="400"
+								height="220"
+								loading="lazy"
+								decoding="async"
+							/>
 						{:else}
 							<div class="image-placeholder">
 								<span>{domain}</span>
